@@ -48,10 +48,8 @@ mod tests {
         providers::Provider,
         rpc::types::TransactionRequest,
     };
-    // use valence_e2e::utils::solidity_contracts::{
-    //     MockERC20,
-    //     ValenceVault::{self},
-    // };
+
+    use crate::evm::testing::solidity_contracts::MockERC20;
 
     use super::*;
 
@@ -108,68 +106,68 @@ mod tests {
         assert_eq!(pre_balance + U256::from(200), post_balance);
     }
 
-    // #[tokio::test]
-    // #[ignore = "requires local anvil instance"]
-    // async fn test_eth_erc20_transfer_and_query() {
-    //     let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
-    //     let provider = client.get_request_provider().await.unwrap();
-    //     let accounts = provider.get_accounts().await.unwrap();
+    #[tokio::test]
+    #[ignore = "requires local anvil instance"]
+    async fn test_eth_erc20_transfer_and_query() {
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let provider = client.get_request_provider().await.unwrap();
+        let accounts = provider.get_accounts().await.unwrap();
 
-    //     let token_1_tx =
-    //         MockERC20::deploy_builder(&provider, "Token1".to_string(), "T1".to_string())
-    //             .into_transaction_request();
+        let token_1_tx =
+            MockERC20::deploy_builder(&provider, "Token1".to_string(), "T1".to_string())
+                .into_transaction_request();
 
-    //     let token_addr = client
-    //         .execute_tx(token_1_tx)
-    //         .await
-    //         .unwrap()
-    //         .contract_address
-    //         .unwrap();
+        let token_addr = client
+            .execute_tx(token_1_tx)
+            .await
+            .unwrap()
+            .contract_address
+            .unwrap();
 
-    //     let token_1 = MockERC20::new(token_addr, provider);
+        let token_1 = MockERC20::new(token_addr, provider);
 
-    //     let xx = token_1.mint(accounts[0], U256::from(1000));
+        let xx = token_1.mint(accounts[0], U256::from(1000));
 
-    //     let mint_token1_tx = token_1
-    //         .mint(accounts[0], U256::from(1000))
-    //         .into_transaction_request();
+        let mint_token1_tx = token_1
+            .mint(accounts[0], U256::from(1000))
+            .into_transaction_request();
 
-    //     client.execute_tx(mint_token1_tx).await.unwrap();
+        client.execute_tx(mint_token1_tx).await.unwrap();
 
-    //     let pre_balance_call = token_1.balanceOf(accounts[1]);
-    //     let pre_balance = client.query(pre_balance_call).await.unwrap()._0;
+        let pre_balance_call = token_1.balanceOf(accounts[1]);
+        let pre_balance = client.query(pre_balance_call).await.unwrap()._0;
 
-    //     let transfer_request_builder = token_1
-    //         .transfer(accounts[1], U256::from(200))
-    //         .into_transaction_request();
+        let transfer_request_builder = token_1
+            .transfer(accounts[1], U256::from(200))
+            .into_transaction_request();
 
-    //     client.execute_tx(transfer_request_builder).await.unwrap();
+        client.execute_tx(transfer_request_builder).await.unwrap();
 
-    //     let post_balance_call = token_1.balanceOf(accounts[1]);
-    //     let post_balance = client.query(post_balance_call).await.unwrap()._0;
+        let post_balance_call = token_1.balanceOf(accounts[1]);
+        let post_balance = client.query(post_balance_call).await.unwrap()._0;
 
-    //     assert_eq!(pre_balance + U256::from(200), post_balance);
-    // }
+        assert_eq!(pre_balance + U256::from(200), post_balance);
+    }
 
-    // #[tokio::test]
-    // #[ignore = "requires local anvil instance"]
-    // async fn test_eth_query_contract_states() {
-    //     let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
-    //     let provider = client.get_request_provider().await.unwrap();
-    //     let accounts = provider.get_accounts().await.unwrap();
+    #[tokio::test]
+    #[ignore = "requires local anvil instance"]
+    async fn test_eth_query_contract_states() {
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let provider = client.get_request_provider().await.unwrap();
+        let accounts = provider.get_accounts().await.unwrap();
 
-    //     let contract_addr = Address::from_str(TEST_CONTRACT_ADDR).unwrap();
+        let contract_addr = Address::from_str(TEST_CONTRACT_ADDR).unwrap();
 
-    //     let valence_vault = ValenceVault::new(contract_addr, provider);
+        let mock_erc_20 = MockERC20::new(contract_addr, provider);
 
-    //     let req = valence_vault.lastUpdateTimestamp();
+        let req = mock_erc_20.totalSupply();
 
-    //     let response = client.query(req).await.unwrap();
+        let response = client.query(req).await.unwrap();
 
-    //     assert_ne!(0, response._0);
+        assert_ne!(U256::from(0), response._0);
 
-    //     let req = valence_vault.balanceOf(accounts[0]);
-    //     let response = client.query(req).await.unwrap();
-    //     assert_eq!(U256::from(0), response._0);
-    // }
+        let req = mock_erc_20.balanceOf(accounts[0]);
+        let response = client.query(req).await.unwrap();
+        assert_eq!(U256::from(0), response._0);
+    }
 }

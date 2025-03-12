@@ -140,10 +140,10 @@ impl GrpcSigningClient for NeutronClient {
 mod tests {
     use std::time::Duration;
 
-    use serde::{Deserialize, Serialize};
+    use serde::Deserialize;
     use serde_json::json;
 
-    use crate::osmosis::OsmosisClient;
+    use crate::clients::osmosis::OsmosisClient;
 
     use super::*;
 
