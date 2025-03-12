@@ -9,8 +9,16 @@ pub const NANOS_IN_SECOND: u64 = 1_000_000_000;
 impl ProtoTimestamp {
     pub fn extend_by_seconds(&mut self, seconds: u64) -> Result<(), StrategistError> {
         let seconds = i64::try_from(seconds)?;
-        self.0.seconds += seconds;
-        Ok(())
+
+        match self.0.seconds.checked_add(seconds) {
+            Some(val) => {
+                self.0.seconds = val;
+                Ok(())
+            }
+            None => Err(StrategistError::ClientError(
+                "proto timestamp extend by seconds overflow".to_string(),
+            )),
+        }
     }
 
     pub fn to_nanos(&self) -> Result<u64, StrategistError> {

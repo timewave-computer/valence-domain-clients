@@ -48,12 +48,16 @@ impl NobleClient {
     /// - Configuring the module account as a minter with a specified allowance.
     /// - Adding a remote dummy token messenger.
     /// - Linking a local token with a remote dummy token.
-    pub async fn set_up_test_environment(&self, sender: &str, domain_id: u32, denom: &str) {
+    pub async fn set_up_test_environment(
+        &self,
+        sender: &str,
+        domain_id: u32,
+        denom: &str,
+    ) -> Result<(), StrategistError> {
         // First get the module account for the cctp module
         let cctp_module_account_address = self
             .query_module_account(CCTP_MODULE_NAME)
-            .await
-            .unwrap()
+            .await?
             .base_account
             .unwrap()
             .address;
@@ -61,18 +65,16 @@ impl NobleClient {
         // Configure the module account as a minter controller
         let tx_response = self
             .configure_minter_controller(sender, sender, &cctp_module_account_address)
-            .await
-            .unwrap();
+            .await?;
         info!("Minter controller configured response: {:?}", tx_response);
-        self.poll_for_tx(&tx_response.hash).await.unwrap();
+        self.poll_for_tx(&tx_response.hash).await?;
 
         // Configure the module account as a minter with a large mint allowance
         let tx_response = self
             .configure_minter(sender, &cctp_module_account_address, ALLOWANCE, denom)
-            .await
-            .unwrap();
+            .await?;
         info!("Minter configured response: {:?}", tx_response);
-        self.poll_for_tx(&tx_response.hash).await.unwrap();
+        self.poll_for_tx(&tx_response.hash).await?;
 
         // Add a remote token messenger address for the given domain_id.
         // Any address will do as this is for testing the burn functionality.
@@ -82,7 +84,7 @@ impl NobleClient {
 
         match tx_response {
             Ok(response) => {
-                self.poll_for_tx(&response.hash).await.unwrap();
+                self.poll_for_tx(&response.hash).await?;
                 info!("Remote token messenger added response: {:?}", response);
             }
             Err(_) => {
@@ -97,13 +99,15 @@ impl NobleClient {
             .await;
         match tx_response {
             Ok(response) => {
-                self.poll_for_tx(&response.hash).await.unwrap();
+                self.poll_for_tx(&response.hash).await?;
                 info!("Token pair linked response: {:?}", response);
             }
             Err(_) => {
                 info!("Token pair already linked!");
             }
         }
+
+        Ok(())
     }
 
     pub async fn mint_fiat(

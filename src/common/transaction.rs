@@ -16,7 +16,7 @@ impl TryFrom<TxResponse> for TransactionResponse {
     fn try_from(value: TxResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             hash: value.txhash,
-            success: true,
+            success: value.code == 0, // 0 is success
             block_height: u64::try_from(value.height)?,
             gas_used: u64::try_from(value.gas_used)?,
         })
