@@ -81,8 +81,7 @@ impl BaseClient for NeutronClient {
             value: ibc_transfer_msg.value,
         };
 
-        let simulation_response = self.simulate_tx(valid_any.clone()).await?;
-        let fee = self.get_tx_fee(simulation_response)?;
+        let fee = self.estimate_msg_tx_fee(&valid_any).await?;
 
         let raw_tx = signing_client
             .create_tx(valid_any, fee, None)

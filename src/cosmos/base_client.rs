@@ -55,8 +55,7 @@ pub trait BaseClient: GrpcSigningClient {
         }
         .to_any()?;
 
-        let simulation_response = self.simulate_tx(transfer_msg.clone()).await?;
-        let fee = self.get_tx_fee(simulation_response)?;
+        let fee = self.estimate_msg_tx_fee(&transfer_msg).await?;
 
         let raw_tx = signing_client.create_tx(transfer_msg, fee, memo).await?;
 
@@ -190,8 +189,7 @@ pub trait BaseClient: GrpcSigningClient {
 
         let any_msg = Any::from_msg(&ibc_transfer_msg)?;
 
-        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
-        let fee = self.get_tx_fee(simulation_response)?;
+        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
 
         let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 

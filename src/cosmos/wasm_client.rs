@@ -65,8 +65,7 @@ pub trait WasmClient: GrpcSigningClient {
         }
         .to_any()?;
 
-        let simulation_response = self.simulate_tx(wasm_tx.clone()).await?;
-        let fee = self.get_tx_fee(simulation_response)?;
+        let fee = self.estimate_msg_tx_fee(&wasm_tx).await?;
 
         let raw_tx = signing_client.create_tx(wasm_tx, fee, None).await?;
 
