@@ -237,8 +237,8 @@ mod tests {
 
         #[derive(Deserialize, Debug)]
         struct Config {
-            pub authorization_contract: String,
-            pub processor_domain: ProcessorDomain,
+            pub _authorization_contract: String,
+            pub _processor_domain: ProcessorDomain,
             pub state: State,
         }
 

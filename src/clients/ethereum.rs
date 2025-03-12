@@ -126,8 +126,6 @@ mod tests {
 
         let token_1 = MockERC20::new(token_addr, provider);
 
-        let xx = token_1.mint(accounts[0], U256::from(1000));
-
         let mint_token1_tx = token_1
             .mint(accounts[0], U256::from(1000))
             .into_transaction_request();
