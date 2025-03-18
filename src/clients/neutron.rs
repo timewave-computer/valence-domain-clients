@@ -39,66 +39,66 @@ impl NeutronClient {
 
 #[async_trait]
 impl BaseClient for NeutronClient {
-    /// neutron has custom ibc logic so we override the default BaseClient ibc_transfer
-    async fn ibc_transfer(
-        &self,
-        to: String,
-        denom: String,
-        amount: String,
-        channel_id: String,
-        timeout_seconds: u64,
-        memo: Option<String>,
-    ) -> Result<TransactionResponse, StrategistError> {
-        // first we query the latest block header to respect the chain time for timeouts
-        let latest_block_header = self.latest_block_header().await?;
+    // /// neutron has custom ibc logic so we override the default BaseClient ibc_transfer
+    // async fn ibc_transfer(
+    //     &self,
+    //     to: String,
+    //     denom: String,
+    //     amount: String,
+    //     channel_id: String,
+    //     timeout_seconds: u64,
+    //     memo: Option<String>,
+    // ) -> Result<TransactionResponse, StrategistError> {
+    //     // first we query the latest block header to respect the chain time for timeouts
+    //     let latest_block_header = self.latest_block_header().await?;
 
-        let mut current_time = ProtoTimestamp::try_from(latest_block_header)?;
+    //     let mut current_time = ProtoTimestamp::try_from(latest_block_header)?;
 
-        current_time.extend_by_seconds(timeout_seconds)?;
+    //     current_time.extend_by_seconds(timeout_seconds)?;
 
-        let timeout_nanos = current_time.to_nanos()?;
+    //     let timeout_nanos = current_time.to_nanos()?;
 
-        let signing_client = self.get_signing_client().await?;
+    //     let signing_client = self.get_signing_client().await?;
 
-        let ibc_transfer_msg = neutron_std::types::ibc::applications::transfer::v1::MsgTransfer {
-            source_port: "transfer".to_string(),
-            source_channel: channel_id.to_string(),
-            token: Some(neutron_std::types::cosmos::base::v1beta1::Coin {
-                denom: denom.to_string(),
-                amount,
-            }),
-            sender: signing_client.address.to_string(),
-            receiver: to.to_string(),
-            timeout_height: None,
-            timeout_timestamp: timeout_nanos,
-            memo: memo.unwrap_or_default(),
-        }
-        .to_any();
+    //     let ibc_transfer_msg = neutron_std::types::ibc::applications::transfer::v1::MsgTransfer {
+    //         source_port: "transfer".to_string(),
+    //         source_channel: channel_id.to_string(),
+    //         token: Some(neutron_std::types::cosmos::base::v1beta1::Coin {
+    //             denom: denom.to_string(),
+    //             amount,
+    //         }),
+    //         sender: signing_client.address.to_string(),
+    //         receiver: to.to_string(),
+    //         timeout_height: None,
+    //         timeout_timestamp: timeout_nanos,
+    //         memo: memo.unwrap_or_default(),
+    //     }
+    //     .to_any();
 
-        // convert to cosmrs::Any
-        let valid_any = cosmrs::Any {
-            type_url: ibc_transfer_msg.type_url,
-            value: ibc_transfer_msg.value,
-        };
+    //     // convert to cosmrs::Any
+    //     let valid_any = cosmrs::Any {
+    //         type_url: ibc_transfer_msg.type_url,
+    //         value: ibc_transfer_msg.value,
+    //     };
 
-        let fee = self.estimate_msg_tx_fee(&valid_any).await?;
+    //     let fee = self.estimate_msg_tx_fee(&valid_any).await?;
 
-        let raw_tx = signing_client
-            .create_tx(valid_any, fee, None)
-            .await
-            .unwrap();
+    //     let raw_tx = signing_client
+    //         .create_tx(valid_any, fee, None)
+    //         .await
+    //         .unwrap();
 
-        let channel = self.get_grpc_channel().await?;
+    //     let channel = self.get_grpc_channel().await?;
 
-        let mut grpc_client = CosmosServiceClient::new(channel);
+    //     let mut grpc_client = CosmosServiceClient::new(channel);
 
-        let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
+    //     let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
 
-        match broadcast_tx_response.tx_response {
-            Some(tx_response) => Ok(TransactionResponse::try_from(tx_response)?),
-            None => Err(StrategistError::TransactionError("failed".to_string())),
-        }
-    }
+    //     match broadcast_tx_response.tx_response {
+    //         Some(tx_response) => Ok(TransactionResponse::try_from(tx_response)?),
+    //         None => Err(StrategistError::TransactionError("failed".to_string())),
+    //     }
+    // }
 }
 
 #[async_trait]
