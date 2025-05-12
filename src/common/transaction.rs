@@ -29,7 +29,6 @@ impl TryFrom<Option<TxResponse>> for TransactionResponse {
     fn try_from(value: Option<TxResponse>) -> Result<Self, Self::Error> {
         match value {
             Some(tx) => Self::try_from(tx),
-
             None => Err(StrategistError::TransactionError(
                 "failed to find tx_response".to_string(),
             )),

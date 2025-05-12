@@ -71,7 +71,7 @@ pub trait GrpcSigningClient {
 
         let mut grpc_client = CosmosServiceClient::new(channel);
 
-        let tx_body = BodyBuilder::new().msg(msg.clone()).finish();
+        let tx_body = BodyBuilder::new().msg(msg).finish();
         let auth_info = SignerInfo::single_direct(Some(signer.public_key), signer.sequence)
             .auth_info(cosmrs::tx::Fee::from_amount_and_gas(
                 Coin {
@@ -100,12 +100,6 @@ pub trait GrpcSigningClient {
         let sim_response = grpc_client.simulate(request).await?.into_inner();
 
         Ok(sim_response)
-    }
-
-    /// Estimates a tx fee for a given proto Any msg
-    async fn estimate_msg_tx_fee(&self, msg: &Any) -> Result<Fee, StrategistError> {
-        let simulation_response = self.simulate_tx(msg.clone()).await?;
-        self.get_tx_fee(simulation_response)
     }
 
     /// fetches the chain-registry config for the given chain and denom and returns
