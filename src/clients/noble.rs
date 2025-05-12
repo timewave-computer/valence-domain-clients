@@ -10,7 +10,8 @@ use crate::{
 const CHAIN_PREFIX: &str = "noble";
 const CHAIN_DENOM: &str = "uusdc";
 const CCTP_MODULE_NAME: &str = "cctp";
-const ALLOWANCE: &str = "1000000000000000000000";
+// u128::max as str
+const ALLOWANCE: &str = "340282366920938463463374607431768211455";
 const DUMMY_ADDRESS: &[u8; 32] = &[0x01; 32];
 
 /// client for interacting with the noble chain
@@ -48,16 +49,12 @@ impl NobleClient {
     /// - Configuring the module account as a minter with a specified allowance.
     /// - Adding a remote dummy token messenger.
     /// - Linking a local token with a remote dummy token.
-    pub async fn set_up_test_environment(
-        &self,
-        sender: &str,
-        domain_id: u32,
-        denom: &str,
-    ) -> Result<(), StrategistError> {
+    pub async fn set_up_test_environment(&self, sender: &str, domain_id: u32, denom: &str) {
         // First get the module account for the cctp module
         let cctp_module_account_address = self
             .query_module_account(CCTP_MODULE_NAME)
-            .await?
+            .await
+            .unwrap()
             .base_account
             .unwrap()
             .address;
@@ -65,16 +62,18 @@ impl NobleClient {
         // Configure the module account as a minter controller
         let tx_response = self
             .configure_minter_controller(sender, sender, &cctp_module_account_address)
-            .await?;
+            .await
+            .unwrap();
         info!("Minter controller configured response: {:?}", tx_response);
-        self.poll_for_tx(&tx_response.hash).await?;
+        self.poll_for_tx(&tx_response.hash).await.unwrap();
 
         // Configure the module account as a minter with a large mint allowance
         let tx_response = self
             .configure_minter(sender, &cctp_module_account_address, ALLOWANCE, denom)
-            .await?;
+            .await
+            .unwrap();
         info!("Minter configured response: {:?}", tx_response);
-        self.poll_for_tx(&tx_response.hash).await?;
+        self.poll_for_tx(&tx_response.hash).await.unwrap();
 
         // Add a remote token messenger address for the given domain_id.
         // Any address will do as this is for testing the burn functionality.
@@ -84,7 +83,7 @@ impl NobleClient {
 
         match tx_response {
             Ok(response) => {
-                self.poll_for_tx(&response.hash).await?;
+                self.poll_for_tx(&response.hash).await.unwrap();
                 info!("Remote token messenger added response: {:?}", response);
             }
             Err(_) => {
@@ -99,15 +98,13 @@ impl NobleClient {
             .await;
         match tx_response {
             Ok(response) => {
-                self.poll_for_tx(&response.hash).await?;
+                self.poll_for_tx(&response.hash).await.unwrap();
                 info!("Token pair linked response: {:?}", response);
             }
             Err(_) => {
                 info!("Token pair already linked!");
             }
         }
-
-        Ok(())
     }
 
     pub async fn mint_fiat(
@@ -117,6 +114,8 @@ impl NobleClient {
         amount: &str,
         denom: &str,
     ) -> Result<TransactionResponse, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+
         let mint_msg = MsgMint {
             from: sender.to_string(),
             address: receiver.to_string(),
@@ -128,13 +127,10 @@ impl NobleClient {
 
         let any_msg = Any::from_msg(&mint_msg)?;
 
-        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
-        let raw_tx = self
-            .get_signing_client()
-            .await?
-            .create_tx(any_msg, fee, None)
-            .await?;
+        let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 
         let channel = self.get_grpc_channel().await?;
 
@@ -145,12 +141,14 @@ impl NobleClient {
         TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 
-    pub async fn configure_minter_controller(
+    async fn configure_minter_controller(
         &self,
         sender: &str,
         controller: &str,
         minter: &str,
     ) -> Result<TransactionResponse, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+
         let configure_minter_controller_msg = MsgConfigureMinterController {
             from: sender.to_string(),
             controller: controller.to_string(),
@@ -159,13 +157,10 @@ impl NobleClient {
 
         let any_msg = Any::from_msg(&configure_minter_controller_msg)?;
 
-        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
-        let raw_tx = self
-            .get_signing_client()
-            .await?
-            .create_tx(any_msg, fee, None)
-            .await?;
+        let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 
         let channel = self.get_grpc_channel().await?;
 
@@ -176,13 +171,15 @@ impl NobleClient {
         TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 
-    pub async fn configure_minter(
+    async fn configure_minter(
         &self,
         sender: &str,
         address: &str,
         allowance: &str,
         denom: &str,
     ) -> Result<TransactionResponse, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+
         let configure_minter_msg = MsgConfigureMinter {
             from: sender.to_string(),
             address: address.to_string(),
@@ -194,13 +191,10 @@ impl NobleClient {
 
         let any_msg = Any::from_msg(&configure_minter_msg)?;
 
-        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
-        let raw_tx = self
-            .get_signing_client()
-            .await?
-            .create_tx(any_msg, fee, None)
-            .await?;
+        let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 
         let channel = self.get_grpc_channel().await?;
 
@@ -211,12 +205,14 @@ impl NobleClient {
         TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 
-    pub async fn add_remote_token_messenger(
+    async fn add_remote_token_messenger(
         &self,
         signer: &str,
         domain_id: u32,
         address: &[u8],
     ) -> Result<TransactionResponse, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+
         let add_remote_token_messenger_msg = MsgAddRemoteTokenMessenger {
             from: signer.to_string(),
             domain_id,
@@ -225,13 +221,10 @@ impl NobleClient {
 
         let any_msg = Any::from_msg(&add_remote_token_messenger_msg)?;
 
-        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
-        let raw_tx = self
-            .get_signing_client()
-            .await?
-            .create_tx(any_msg, fee, None)
-            .await?;
+        let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 
         let channel = self.get_grpc_channel().await?;
 
@@ -242,13 +235,15 @@ impl NobleClient {
         TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 
-    pub async fn link_token_pair(
+    async fn link_token_pair(
         &self,
         signer: &str,
         remote_domain: u32,
         remote_token: &[u8],
         local_token: &str,
     ) -> Result<TransactionResponse, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+
         let link_token_pair_msg = MsgLinkTokenPair {
             from: signer.to_string(),
             remote_domain,
@@ -258,13 +253,10 @@ impl NobleClient {
 
         let any_msg = Any::from_msg(&link_token_pair_msg)?;
 
-        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
-        let raw_tx = self
-            .get_signing_client()
-            .await?
-            .create_tx(any_msg, fee, None)
-            .await?;
+        let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 
         let channel = self.get_grpc_channel().await?;
 

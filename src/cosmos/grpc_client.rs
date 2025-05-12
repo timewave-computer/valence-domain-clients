@@ -65,7 +65,7 @@ pub trait GrpcSigningClient {
     }
 
     /// simulates a transaction with the given message.
-    async fn simulate_tx(&self, msg: &Any) -> Result<SimulateResponse, StrategistError> {
+    async fn simulate_tx(&self, msg: Any) -> Result<SimulateResponse, StrategistError> {
         let channel = self.get_grpc_channel().await?;
         let signer = self.get_signing_client().await?;
 
@@ -104,7 +104,7 @@ pub trait GrpcSigningClient {
 
     /// Estimates a tx fee for a given proto Any msg
     async fn estimate_msg_tx_fee(&self, msg: &Any) -> Result<Fee, StrategistError> {
-        let simulation_response = self.simulate_tx(msg).await?;
+        let simulation_response = self.simulate_tx(msg.clone()).await?;
         self.get_tx_fee(simulation_response)
     }
 
