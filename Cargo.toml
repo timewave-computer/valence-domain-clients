@@ -7,7 +7,8 @@ version    = "0.1.0"
 repository = "https://github.com/timewave-computer/valence-domain-clients"
 description = "Client implementations for interacting with Valence Protocol domains"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+test-utils = []
 
 [dependencies]
 # generic imports
@@ -17,6 +18,7 @@ serde              = { version = "1.0.207", default-features = false, features =
 serde_json         = "1.0.125"
 prost              = { version = "0.13.3", default-features = false }
 log                = "0.4.22"
+thiserror          = "1.0.63"
 
 # cosmos-specific imports
 bip32                   = { version = "0.5", features = ["bip39"] }

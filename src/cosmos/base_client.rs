@@ -10,13 +10,20 @@ use cosmos_sdk_proto::cosmos::{
     tx::v1beta1::GetTxRequest,
 };
 
-use cosmrs::{bank::MsgSend, tx::Msg, AccountId, Coin};
+use cosmrs::{
+    bank::MsgSend,
+    rpc::{Client, HttpClient},
+    tendermint::block::Height,
+    tx::Msg,
+    AccountId, Coin, Denom,
+};
 use cosmrs::{
     proto::cosmos::base::tendermint::v1beta1::{
         service_client::ServiceClient as TendermintServiceClient, GetLatestBlockRequest,
     },
     Any,
 };
+use log::{info, warn};
 use prost::Message;
 use tonic::Request;
 
@@ -33,6 +40,14 @@ use super::{
 /// these function definitions can be overridden to match the custom chain logic.
 #[async_trait]
 pub trait BaseClient: GrpcSigningClient {
+    fn proto_coin(denom: &str, amt: u128) -> Result<Coin, StrategistError> {
+        let proto_denom: Denom = denom.parse()?;
+        Ok(Coin {
+            denom: proto_denom,
+            amount: amt,
+        })
+    }
+
     async fn transfer(
         &self,
         to: &str,
@@ -55,7 +70,8 @@ pub trait BaseClient: GrpcSigningClient {
         }
         .to_any()?;
 
-        let fee = self.estimate_msg_tx_fee(&transfer_msg).await?;
+        let simulation_response = self.simulate_tx(transfer_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
         let raw_tx = signing_client.create_tx(transfer_msg, fee, memo).await?;
 
@@ -63,10 +79,7 @@ pub trait BaseClient: GrpcSigningClient {
 
         let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
 
-        match broadcast_tx_response.tx_response {
-            Some(tx_response) => Ok(TransactionResponse::try_from(tx_response)?),
-            None => Err(StrategistError::TransactionError("failed".to_string())),
-        }
+        TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 
     async fn latest_block_header(&self) -> Result<Header, StrategistError> {
@@ -88,6 +101,20 @@ pub trait BaseClient: GrpcSigningClient {
             .ok_or_else(|| StrategistError::QueryError("no header in sdk_block".to_string()))?;
 
         Ok(block_header)
+    }
+
+    async fn block_results(
+        &self,
+        rpc_addr: &str,
+        height: u32,
+    ) -> Result<cosmrs::rpc::endpoint::block_results::Response, StrategistError> {
+        let client = HttpClient::new(rpc_addr)?;
+
+        let height = Height::from(height);
+
+        let results = client.block_results(height).await?;
+
+        Ok(results)
     }
 
     async fn query_balance(&self, address: &str, denom: &str) -> Result<u128, StrategistError> {
@@ -112,6 +139,32 @@ pub trait BaseClient: GrpcSigningClient {
         let amount = coin.amount.parse::<u128>()?;
 
         Ok(amount)
+    }
+
+    async fn query_module_account(&self, name: &str) -> Result<ModuleAccount, StrategistError> {
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = AuthQueryClient::new(channel);
+
+        let request = QueryModuleAccountByNameRequest {
+            name: name.to_string(),
+        };
+
+        let response: QueryModuleAccountByNameResponse = grpc_client
+            .module_account_by_name(Request::new(request))
+            .await?
+            .into_inner();
+
+        let module_account_any = response
+            .account
+            .ok_or_else(|| StrategistError::QueryError("No module account returned".to_string()))?;
+
+        // Decode the bytes into a ModuleAccount
+        let module_account = ModuleAccount::decode(&*module_account_any.value).map_err(|e| {
+            StrategistError::QueryError(format!("Failed to decode ModuleAccount: {}", e))
+        })?;
+
+        Ok(module_account)
     }
 
     // expected utils
@@ -156,6 +209,44 @@ pub trait BaseClient: GrpcSigningClient {
         ))
     }
 
+    async fn poll_until_expected_balance(
+        &self,
+        address: &str,
+        denom: &str,
+        min_amount: u128,
+        interval_sec: u64,
+        max_attempts: u32,
+    ) -> Result<u128, StrategistError> {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(interval_sec));
+
+        info!("Polling {address} balance to exceed {denom}{min_amount}");
+
+        for attempt in 1..max_attempts + 1 {
+            interval.tick().await;
+
+            match self.query_balance(address, denom).await {
+                Ok(balance) => {
+                    if balance >= min_amount {
+                        return Ok(balance);
+                    }
+                    info!(
+                        "Balance polling attempt {attempt}/{max_attempts}: current={balance}, target={min_amount}"
+                    );
+                }
+                Err(e) => {
+                    warn!(
+                        "Balance polling attempt {attempt}/{max_attempts} failed: {:?}",
+                        e
+                    );
+                }
+            }
+        }
+
+        Err(StrategistError::QueryError(format!(
+            "Balance did not exceed {min_amount}{denom} after {max_attempts} attempts"
+        )))
+    }
+
     async fn ibc_transfer(
         &self,
         to: String,
@@ -189,7 +280,8 @@ pub trait BaseClient: GrpcSigningClient {
 
         let any_msg = Any::from_msg(&ibc_transfer_msg)?;
 
-        let fee = self.estimate_msg_tx_fee(&any_msg).await?;
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
 
         let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
 
@@ -199,35 +291,6 @@ pub trait BaseClient: GrpcSigningClient {
 
         let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
 
-        match broadcast_tx_response.tx_response {
-            Some(tx_response) => Ok(TransactionResponse::try_from(tx_response)?),
-            None => Err(StrategistError::TransactionError("failed".to_string())),
-        }
-    }
-
-    async fn query_module_account(&self, name: &str) -> Result<ModuleAccount, StrategistError> {
-        let channel = self.get_grpc_channel().await?;
-
-        let mut grpc_client = AuthQueryClient::new(channel);
-
-        let request = QueryModuleAccountByNameRequest {
-            name: name.to_string(),
-        };
-
-        let response: QueryModuleAccountByNameResponse = grpc_client
-            .module_account_by_name(Request::new(request))
-            .await?
-            .into_inner();
-
-        let module_account_any = response
-            .account
-            .ok_or_else(|| StrategistError::QueryError("No module account returned".to_string()))?;
-
-        // Decode the bytes into a ModuleAccount
-        let module_account = ModuleAccount::decode(&*module_account_any.value).map_err(|e| {
-            StrategistError::QueryError(format!("Failed to decode ModuleAccount: {}", e))
-        })?;
-
-        Ok(module_account)
+        TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 }

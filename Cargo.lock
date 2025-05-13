@@ -5883,6 +5883,7 @@ dependencies = [
  "prost 0.13.5",
  "serde",
  "serde_json",
+ "thiserror 1.0.69",
  "tokio",
  "tonic",
 ]
