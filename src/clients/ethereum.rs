@@ -12,10 +12,16 @@ pub struct EthereumClient {
 }
 
 impl EthereumClient {
-    pub fn new(rpc_url: &str, mnemonic: &str) -> Result<Self, StrategistError> {
+    pub fn new(
+        rpc_url: &str,
+        mnemonic: &str,
+        mnemonic_derivation_index: Option<u32>,
+    ) -> Result<Self, StrategistError> {
         let builder = MnemonicBuilder::<English>::default().phrase(mnemonic);
 
-        let signer = builder.index(0)?.build()?;
+        let derivation_index = mnemonic_derivation_index.unwrap_or_default();
+
+        let signer = builder.index(derivation_index)?.build()?;
 
         Ok(Self {
             rpc_url: rpc_url.to_string(),
@@ -61,7 +67,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires local anvil instance"]
     async fn test_eth_latest_block_height() {
-        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC, None).unwrap();
 
         let block_number = client.latest_block_height().await.unwrap();
         assert_ne!(block_number, 0);
@@ -70,7 +76,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires local anvil instance"]
     async fn test_eth_query_balance() {
-        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC, None).unwrap();
         let accounts = client.get_provider_accounts().await.unwrap();
 
         let balance = client
@@ -84,7 +90,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires local anvil instance"]
     async fn test_eth_transfer() {
-        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC, None).unwrap();
         let accounts = client.get_provider_accounts().await.unwrap();
 
         let pre_balance = client
@@ -109,7 +115,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires local anvil instance"]
     async fn test_eth_erc20_transfer_and_query() {
-        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC, None).unwrap();
         let provider = client.get_request_provider().await.unwrap();
         let accounts = provider.get_accounts().await.unwrap();
 
@@ -150,7 +156,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires local anvil instance"]
     async fn test_eth_query_contract_states() {
-        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC).unwrap();
+        let client = EthereumClient::new(TEST_RPC_URL, TEST_MNEMONIC, None).unwrap();
         let provider = client.get_request_provider().await.unwrap();
         let accounts = provider.get_accounts().await.unwrap();
 
