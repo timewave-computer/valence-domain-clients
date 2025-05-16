@@ -28,10 +28,9 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
     
-    # Set directories
-    SCRIPT_DIR="$( cd "$( dirname "''${BASH_SOURCE[0]}" )" && pwd )"
-    PROTO_DIR="$SCRIPT_DIR/../src/proto"
-    THIRD_PARTY_DIR="$SCRIPT_DIR/../third_party"
+    # Set directories using the current working directory
+    PROTO_DIR="./src/proto"
+    THIRD_PARTY_DIR="./third_party"
     TMP_DIR=$(mktemp -d)
     
     # Create proto and third_party directories if they don't exist
