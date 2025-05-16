@@ -49,3 +49,5 @@ pub use cosmos::types::{CosmosCoin, CosmosFee, CosmosHeader};
 
 // EVM-specific exports
 pub use evm::base_client::EvmBaseClient;
+#[cfg(feature = "evm")]
+pub use evm::chains::base::{BaseClient, BaseNetwork};

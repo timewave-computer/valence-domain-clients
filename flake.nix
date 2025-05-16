@@ -221,6 +221,7 @@
             echo "    --noble                - Fetch only Noble chain protos"
             echo "    --osmosis              - Fetch only Osmosis chain protos"
             echo "    --cosmos-sdk           - Fetch only Cosmos SDK protos"
+            echo "    --base                 - Generate Base blockchain configuration"
             echo "MACOSX_DEPLOYMENT_TARGET set to $MACOSX_DEPLOYMENT_TARGET"
             echo "SSL_CERT_FILE set to $SSL_CERT_FILE"
             echo "NIX_SSL_CERT_FILE set to $NIX_SSL_CERT_FILE"

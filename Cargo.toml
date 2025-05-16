@@ -20,6 +20,7 @@ cosmos = []       # Cosmos ecosystem
 # Chain-specific features
 # EVM chains
 ethereum = ["evm"]
+base = ["evm"]
 
 # Cosmos chains
 babylon = ["cosmos"]
@@ -29,7 +30,7 @@ neutron = ["cosmos"]
 osmosis = ["cosmos"]
 
 # Default features set
-default = ["core", "proto", "evm", "cosmos", "ethereum", "babylon", "gaia", "neutron", "osmosis", "noble"]
+default = ["core", "proto", "evm", "cosmos", "ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble"]
 
 [dependencies]
 # Internal crates - removed valence-domain-protos dependency

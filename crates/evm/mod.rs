@@ -30,6 +30,7 @@ pub use errors::EvmError;
 
 // Re-export chain implementations
 pub use chains::ethereum::EthereumClient;
+pub use chains::base::{BaseClient, BaseNetwork};
 
 // Re-export client configurations
 pub use generic_client::{EvmClientConfig, GenericEvmClient};

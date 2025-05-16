@@ -21,6 +21,20 @@ let
       repo = "https://github.com/cosmos/cosmos-sdk";
       protoPath = "proto";
     };
+    base = {
+      # Base is an Ethereum L2 and doesn't use protocol buffers
+      # These are included for configuration reference only
+      mainnet = {
+        rpc = "https://mainnet.base.org";
+        chainId = 8453;
+        explorer = "https://base.blockscout.com/";
+      };
+      testnet = {
+        rpc = "https://sepolia.base.org";
+        chainId = 84532;
+        explorer = "https://sepolia-explorer.base.org";
+      };
+    };
   };
   
   # Base derivation for the fetch-protos script
@@ -31,6 +45,7 @@ let
     # Set directories using the current working directory
     PROTO_DIR="./src/proto"
     THIRD_PARTY_DIR="./third_party"
+    CONFIG_DIR="./src/config"
     TMP_DIR=$(mktemp -d)
     
     # Create proto and third_party directories if they don't exist
@@ -38,6 +53,7 @@ let
     mkdir -p "$THIRD_PARTY_DIR/gogoproto"
     mkdir -p "$THIRD_PARTY_DIR/cosmos_proto"
     mkdir -p "$THIRD_PARTY_DIR/amino"
+    mkdir -p "$CONFIG_DIR"
     
     # Clean up temporary directory on exit
     trap 'rm -rf "$TMP_DIR"' EXIT
@@ -80,16 +96,45 @@ let
       echo "All proto dependencies fetched successfully"
     }
     
+    # Function to generate Base network configuration
+    generate_base_config() {
+      echo "Generating Base network configuration..."
+      
+      # Create a Base network config file
+      cat > "$CONFIG_DIR/base_networks.json" << EOF
+{
+  "networks": {
+    "mainnet": {
+      "rpc": "https://mainnet.base.org",
+      "chainId": 8453,
+      "currencySymbol": "ETH",
+      "blockExplorer": "https://base.blockscout.com/"
+    },
+    "sepolia": {
+      "rpc": "https://sepolia.base.org",
+      "chainId": 84532, 
+      "currencySymbol": "ETH",
+      "blockExplorer": "https://sepolia-explorer.base.org"
+    }
+  }
+}
+EOF
+      
+      echo "Base network configuration generated at $CONFIG_DIR/base_networks.json"
+    }
+    
     # Main execution
     main() {
       local chains=()
       local fetch_deps=true
+      local gen_base=false
       
       # Parse command line arguments
       while [[ $# -gt 0 ]]; do
         case "$1" in
           --all)
             chains=("noble" "osmosis" "cosmos-sdk")
+            gen_base=true
             shift
             ;;
           --noble)
@@ -104,6 +149,10 @@ let
             chains+=("cosmos-sdk")
             shift
             ;;
+          --base)
+            gen_base=true
+            shift
+            ;;
           --no-deps)
             fetch_deps=false
             shift
@@ -116,13 +165,19 @@ let
       done
       
       # Default to all chains if none specified
-      if [[ ''${#chains[@]} -eq 0 ]]; then
+      if [[ ''${#chains[@]} -eq 0 && "$gen_base" == false ]]; then
         chains=("noble" "osmosis" "cosmos-sdk")
+        gen_base=true
       fi
       
       # Fetch dependencies if requested
       if [[ "$fetch_deps" == true ]]; then
         fetch_dependencies
+      fi
+      
+      # Generate Base configuration if requested
+      if [[ "$gen_base" == true ]]; then
+        generate_base_config
       fi
       
       # Fetch requested chain protos
@@ -141,6 +196,9 @@ let
       done
       
       echo "Proto files have been successfully fetched to $PROTO_DIR"
+      if [[ "$gen_base" == true ]]; then
+        echo "Base network configuration has been generated"
+      fi
       echo "Run 'cargo build' to regenerate protocol buffer code"
     }
     

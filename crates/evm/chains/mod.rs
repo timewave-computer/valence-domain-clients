@@ -4,3 +4,4 @@
 
 // Re-export specific chain implementations
 pub mod ethereum;
+pub mod base;
