@@ -49,10 +49,11 @@ async fn test_gaia_query_balance() {
     let client = create_test_client().await.expect("Failed to create client");
     let signer = client.get_signer_details().await.expect("Failed to get signer details");
     
-    // Query native token balance
-    let balance = client.query_balance(&signer.address, "uatom").await;
-    assert!(balance.is_ok(), "Failed to query balance: {:?}", balance.err());
-    println!("Cosmos Hub native token balance: {} uatom", balance.unwrap());
+    // Convert GenericAddress to &str for query methods
+    let address_str = signer.address.to_string();
+    let balance = client.query_balance(&address_str, "uatom").await;
+    assert!(balance.is_ok());
+    assert!(balance.unwrap() > 0);
 }
 
 #[tokio::test]

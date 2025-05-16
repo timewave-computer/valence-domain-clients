@@ -2,25 +2,20 @@
 // Test Modules
 //-----------------------------------------------------------------------------
 
-// Cosmos module tests
-mod cosmos {
-    // Client implementation tests
-    mod noble_tests; // Fixed and working now
-    
-    // Utility module tests
-    // mod grpc_client_tests; // Temporarily disabled - moved to tests/temp
-}
+// Cosmos tests
+pub mod cosmos;
 
-// EVM module tests
-mod evm {
-    mod ethereum_tests;
-    mod base_tests;
-}
+// Core functionality tests
+pub mod core;
+
+// Integration tests for full workflows
+pub mod integration;
+
+// EVM blockchain tests
+pub mod evm;
+
+// Temporary directory for tests being fixed
+pub mod temp;
 
 // Protocol buffer tests
-mod proto {
-    mod mod_tests;
-}
-
-// Integration tests with mocks and real networks
-mod integration; 
+pub mod proto; 

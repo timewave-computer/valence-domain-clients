@@ -49,5 +49,11 @@ pub use cosmos::types::{CosmosCoin, CosmosFee, CosmosHeader};
 
 // EVM-specific exports
 pub use evm::base_client::EvmBaseClient;
+
+// Flashbots bundle functionality - always available through encapsulated interface
+pub use evm::bundle::FlashbotsBundle;
+
 #[cfg(feature = "evm")]
 pub use evm::chains::base::{BaseClient, BaseNetwork};
+#[cfg(feature = "evm")]
+pub use evm::chains::ethereum::EthereumClient;

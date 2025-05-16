@@ -41,13 +41,19 @@ mock! {
 // Unit Tests with Mocks
 //-----------------------------------------------------------------------------
 
-#[test]
+#[tokio::test]
+#[ignore = "Requires connection to an Osmosis node"]
 async fn test_osmosis_client_initialization() {
-    // Test initialization without calling actual Osmosis network
+    if env::var("MNEMONIC").is_err() {
+        println!("Skipping Osmosis client test (MNEMONIC not set)");
+        return;
+    }
+    
+    // Use a local constructor for the client
     let client = OsmosisClient::new(
-        "https://example-osmosis-grpc.com",
+        "https://osmosis-grpc.polkachu.com:14590",
         "osmosis-1",
-        "test test test test test test test test test test test junk",
+        &env::var("MNEMONIC").unwrap_or_default(),
         None,
     ).await;
     
@@ -79,14 +85,17 @@ async fn test_swap_tokens() {
     
     // --- Setup expected transaction response
     let expected_tx = TransactionResponse {
-        tx_hash: "SWAP123456789".to_string(),
-        height: 8765432,
-        gas_used: Some(150000),
+        tx_hash: "ABCDEF1234567890".to_string(),
+        height: 12345,
         gas_wanted: Some(200000),
-        events: Vec::new(),
+        gas_used: Some(150000),
+        events: vec![],
         code: None,
-        raw_log: None,
+        raw_log: Some("success".to_string()),
         data: None,
+        block_hash: Some("block123".to_string()),
+        timestamp: 1672574400, // Unix timestamp for "2023-01-01T12:00:00Z"
+        original_request_payload: None,
     };
     
     // --- Set expectations
@@ -113,8 +122,8 @@ async fn test_swap_tokens() {
     // --- Verify the result
     assert!(result.is_ok());
     let tx = result.unwrap();
-    assert_eq!(tx.tx_hash, "SWAP123456789");
-    assert_eq!(tx.height, 8765432);
+    assert_eq!(tx.tx_hash, "ABCDEF1234567890");
+    assert_eq!(tx.height, 12345);
 }
 
 #[test]
@@ -132,6 +141,9 @@ async fn test_add_liquidity() {
         code: None,
         raw_log: None,
         data: None,
+        block_hash: Some("block123".to_string()),
+        timestamp: 1672574400, // Unix timestamp for "2023-01-01T12:00:00Z"
+        original_request_payload: None,
     };
     
     // --- Create test tokens
@@ -201,5 +213,5 @@ async fn test_integration_osmosis_balance() {
     println!("Osmosis balance: {} uosmo", balance);
     
     // Simple assertion to verify query works
-    assert!(balance >= 0, "Balance query returned unexpected value");
+    assert!(balance > 0, "Balance query returned unexpected value");
 }

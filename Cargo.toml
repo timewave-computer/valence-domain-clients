@@ -29,8 +29,11 @@ gaia = ["cosmos"]
 neutron = ["cosmos"]
 osmosis = ["cosmos"]
 
-# Default features set
-default = ["core", "proto", "evm", "cosmos", "ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble"]
+# Internal features - not exposed to users
+_ethers_backend = ["dep:ethers"]  # Internal feature to conditionally compile ethers
+
+# Default features set - all functionality available
+default = ["core", "proto", "evm", "cosmos", "ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble", "_ethers_backend"]
 
 [dependencies]
 # Internal crates - removed valence-domain-protos dependency
@@ -44,6 +47,10 @@ log                = "0.4.20"
 thiserror          = "1.0.50"
 chrono             = { version = "0.4.31" }
 url                = "2.5.0"
+
+# Crypto dependencies for default implementation (no dependency conflicts)
+tiny-keccak        = { version = "2.0.2", features = ["keccak"] }
+libsecp256k1       = { version = "0.7.1" }
 
 # cosmos-specific imports
 bip32                   = { version = "0.4.0", default-features = false, features = ["bip39", "secp256k1"] } # cosmrs 0.18.0 uses 0.4
@@ -75,6 +82,8 @@ alloy_signer_local     = { package = "alloy-signer-local", version = "0.8.0", fe
 ] }
 alloy-signer = "0.8.0"
 
+# For Flashbots support - ethers is conditionally compiled
+ethers = { version = "2.0.10", features = ["eip712", "legacy"], optional = true }
 
 reqwest = { version = "0.11.27", features = ["json"] }
 

@@ -7,7 +7,6 @@
 //! This module provides the `BaseClient` for interacting with Base mainnet and testnet.
 
 use async_trait::async_trait;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::fs;
@@ -85,7 +84,7 @@ impl BaseClient {
     /// Create a new Base client with the specified network and private key
     pub fn new(
         network: BaseNetwork,
-        private_key: Option<&str>,
+        _private_key: Option<&str>,
     ) -> Result<Self, ClientError> {
         let config = EvmClientConfig {
             chain_id: network.chain_id(),
@@ -106,7 +105,7 @@ impl BaseClient {
     /// Create a new Base client with the specified network and private key from a local configuration file
     pub fn from_config_file(
         network: BaseNetwork,
-        private_key: Option<&str>,
+        _private_key: Option<&str>,
         config_path: Option<&Path>,
     ) -> Result<Self, ClientError> {
         // Try to load configuration from file if provided
@@ -147,7 +146,7 @@ impl BaseClient {
         }
         
         // Fall back to default configuration
-        Self::new(network, private_key)
+        Self::new(network, _private_key)
     }
 
     /// Get the network this client is connected to

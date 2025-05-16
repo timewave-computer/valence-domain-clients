@@ -6,7 +6,6 @@ use std::env;
 
 use valence_domain_clients::core::error::ClientError;
 use valence_domain_clients::cosmos::chains::NeutronClient;
-use valence_domain_clients::cosmos::types::CosmosCoin;
 use valence_domain_clients::CosmosBaseClient;
 use valence_domain_clients::cosmos::grpc_client::GrpcSigningClient;
 
@@ -50,10 +49,11 @@ async fn test_neutron_query_balance() {
     let client = create_test_client().await.expect("Failed to create client");
     let signer = client.get_signer_details().await.expect("Failed to get signer details");
     
-    // Query native token balance
-    let balance = client.query_balance(&signer.address, "untrn").await;
-    assert!(balance.is_ok(), "Failed to query balance: {:?}", balance.err());
-    println!("Neutron native token balance: {} untrn", balance.unwrap());
+    // Convert GenericAddress to &str for query methods
+    let address_str = signer.address.to_string();
+    let balance = client.query_balance(&address_str, "untrn").await;
+    assert!(balance.is_ok());
+    assert!(balance.unwrap() > 0);
 }
 
 #[tokio::test]

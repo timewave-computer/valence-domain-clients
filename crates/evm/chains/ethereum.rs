@@ -7,6 +7,9 @@
 //! This module provides a full client for interacting with the Ethereum blockchain
 //! through its JSON-RPC API.
 
+use std::collections::HashMap;
+use reqwest::Client as HttpClient;
+use serde_json::{json, Value};
 use async_trait::async_trait;
 
 use crate::core::error::ClientError;
@@ -14,6 +17,15 @@ use crate::core::transaction::TransactionResponse;
 use crate::evm::types::{EvmAddress, EvmBytes, EvmHash, EvmTransactionRequest, EvmU256};
 use crate::evm::base_client::EvmBaseClient;
 use crate::evm::{GenericEvmClient, EvmClientConfig};
+
+// Import Flashbots bundle types unconditionally
+use crate::evm::bundle::{
+    FlashbotsBundle, EthSendBundleParams, MevSendBundleParams, BundleResponse,
+    FLASHBOTS_RELAY_URL,
+};
+
+// Include the fully isolated crypto adapter for signing
+use crate::evm::crypto_adapter::{keccak256, sign_message};
 
 //-----------------------------------------------------------------------------
 // Ethereum Client Structure
@@ -23,6 +35,7 @@ use crate::evm::{GenericEvmClient, EvmClientConfig};
 pub struct EthereumClient {
     inner: Box<GenericEvmClient>,
     private_key: Option<[u8; 32]>,
+    http_client: HttpClient,
 }
 
 //-----------------------------------------------------------------------------
@@ -48,6 +61,7 @@ impl EthereumClient {
         Ok(Self {
             inner: Box::new(inner),
             private_key: None,
+            http_client: HttpClient::new(),
         })
     }
     
@@ -71,6 +85,17 @@ impl EthereumClient {
     /// Check if the client has a private key for signing
     pub fn has_private_key(&self) -> bool {
         self.private_key.is_some()
+    }
+    
+    /// Set the Flashbots authentication key for bundle submission
+    pub fn with_flashbots_auth(mut self, auth_key: [u8; 32]) -> Self {
+        self.private_key = Some(auth_key);
+        self
+    }
+    
+    /// Convert Ethereum client errors to ClientError
+    fn handle_flashbots_error(&self, error: reqwest::Error) -> ClientError {
+        ClientError::ClientError(format!("Flashbots request failed: {}", error))
     }
     
     //-----------------------------------------------------------------------------
@@ -145,6 +170,24 @@ impl EthereumClient {
         
         self.inner.send_transaction(&tx_request).await
     }
+    
+    // Sign a Flashbots request using the private key
+    // This method uses our isolated crypto adapter
+    fn sign_flashbots_request(&self, message: &[u8]) -> Result<String, ClientError> {
+        let private_key = self.private_key.as_ref()
+            .ok_or_else(|| ClientError::ClientError("No private key available for signing".to_string()))?;
+        
+        // Hash the message with keccak256
+        let message_hash = keccak256(message);
+        
+        // Sign the hash with the private key
+        let (signature, _recovery_id) = sign_message(private_key, &message_hash.0)?;
+        
+        // Format the signature as hex string
+        let signature_hex = format!("0x{}", hex::encode(signature));
+        
+        Ok(signature_hex)
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -218,6 +261,154 @@ impl EvmBaseClient for EthereumClient {
 }
 
 //-----------------------------------------------------------------------------
+// FlashbotsBundle Implementation
+//-----------------------------------------------------------------------------
+
+#[async_trait]
+impl FlashbotsBundle for EthereumClient {
+    async fn send_eth_bundle(&self, params: EthSendBundleParams) -> Result<BundleResponse, ClientError> {
+        if self.private_key.is_none() {
+            return Err(ClientError::ClientError("No Flashbots authentication key provided".to_string()));
+        }
+        
+        // Create the request body
+        let request_body = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_sendBundle",
+            "params": [params]
+        });
+        
+        // Calculate signature for Flashbots authentication
+        let message = format!("{}", request_body);
+        let signature = self.sign_flashbots_request(message.as_bytes())?;
+        
+        // Send the request to Flashbots relay
+        let response = self.http_client.post(FLASHBOTS_RELAY_URL)
+            .header("X-Flashbots-Signature", signature)
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| self.handle_flashbots_error(e))?;
+        
+        // Parse the response
+        let response_json: Value = response.json()
+            .await
+            .map_err(|e| self.handle_flashbots_error(e))?;
+        
+        if let Some(error) = response_json.get("error") {
+            return Err(ClientError::ClientError(format!("Flashbots error: {}", error)));
+        }
+        
+        let result = response_json.get("result")
+            .ok_or_else(|| ClientError::ClientError("No result in Flashbots response".to_string()))?;
+        
+        let bundle_hash = result.get("bundleHash")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ClientError::ClientError("No bundleHash in response".to_string()))?;
+        
+        Ok(BundleResponse {
+            bundle_hash: bundle_hash.to_string(),
+        })
+    }
+    
+    async fn send_mev_bundle(&self, params: MevSendBundleParams) -> Result<BundleResponse, ClientError> {
+        if self.private_key.is_none() {
+            return Err(ClientError::ClientError("No Flashbots authentication key provided".to_string()));
+        }
+        
+        // Create the request body
+        let request_body = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "mev_sendBundle",
+            "params": [params]
+        });
+        
+        // Calculate signature for Flashbots authentication
+        let message = format!("{}", request_body);
+        let signature = self.sign_flashbots_request(message.as_bytes())?;
+        
+        // Send the request to Flashbots relay
+        let response = self.http_client.post(FLASHBOTS_RELAY_URL)
+            .header("X-Flashbots-Signature", signature)
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| self.handle_flashbots_error(e))?;
+        
+        // Parse the response
+        let response_json: Value = response.json()
+            .await
+            .map_err(|e| self.handle_flashbots_error(e))?;
+        
+        if let Some(error) = response_json.get("error") {
+            return Err(ClientError::ClientError(format!("Flashbots error: {}", error)));
+        }
+        
+        let result = response_json.get("result")
+            .ok_or_else(|| ClientError::ClientError("No result in Flashbots response".to_string()))?;
+        
+        let bundle_hash = result.get("bundleHash")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ClientError::ClientError("No bundleHash in response".to_string()))?;
+        
+        Ok(BundleResponse {
+            bundle_hash: bundle_hash.to_string(),
+        })
+    }
+    
+    async fn simulate_bundle(&self, params: EthSendBundleParams) -> Result<HashMap<String, serde_json::Value>, ClientError> {
+        if self.private_key.is_none() {
+            return Err(ClientError::ClientError("No Flashbots authentication key provided".to_string()));
+        }
+        
+        // Create the request body
+        let request_body = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_callBundle",
+            "params": [params, "latest"] // Use latest block for simulation
+        });
+        
+        // Calculate signature for Flashbots authentication
+        let message = format!("{}", request_body);
+        let signature = self.sign_flashbots_request(message.as_bytes())?;
+        
+        // Send the request to Flashbots relay
+        let response = self.http_client.post(FLASHBOTS_RELAY_URL)
+            .header("X-Flashbots-Signature", signature)
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| self.handle_flashbots_error(e))?;
+        
+        // Parse the response
+        let response_json: Value = response.json()
+            .await
+            .map_err(|e| self.handle_flashbots_error(e))?;
+        
+        if let Some(error) = response_json.get("error") {
+            return Err(ClientError::ClientError(format!("Flashbots error: {}", error)));
+        }
+        
+        let result = response_json.get("result")
+            .ok_or_else(|| ClientError::ClientError("No result in Flashbots response".to_string()))?;
+            
+        // Convert the simulation results to a HashMap
+        let mut simulation_results = HashMap::new();
+        
+        if let Some(obj) = result.as_object() {
+            for (key, value) in obj {
+                simulation_results.insert(key.clone(), value.clone());
+            }
+        }
+        
+        Ok(simulation_results)
+    }
+}
+
+//-----------------------------------------------------------------------------
 // Error Conversion
 //-----------------------------------------------------------------------------
 
@@ -233,5 +424,29 @@ impl From<crate::evm::errors::EvmError> for ClientError {
             crate::evm::errors::EvmError::ClientError(msg) => ClientError::ClientError(msg),
             crate::evm::errors::EvmError::NotImplemented(msg) => ClientError::NotImplemented(msg),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_ethereum_client_creation() {
+        let client = EthereumClient::new("https://eth-mainnet.example.com", "", None);
+        assert!(client.is_ok());
+        
+        let client = client.unwrap();
+        assert_eq!(client.chain_id(), 1); // Ethereum mainnet
+        assert!(!client.has_private_key());
+    }
+    
+    #[test]
+    fn test_with_flashbots_auth() {
+        let client = EthereumClient::new("https://eth-mainnet.example.com", "", None).unwrap();
+        let auth_key = [0u8; 32];
+        
+        let client_with_auth = client.with_flashbots_auth(auth_key);
+        assert!(client_with_auth.has_private_key());
     }
 }

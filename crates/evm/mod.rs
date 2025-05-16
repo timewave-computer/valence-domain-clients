@@ -1,30 +1,44 @@
 //-----------------------------------------------------------------------------
-// EVM Module - Ethereum Virtual Machine Client Implementations
+// EVM Module
 //-----------------------------------------------------------------------------
 
-//! EVM client implementations and types for interacting with Ethereum-compatible blockchains.
+//! This module provides client implementations for Ethereum Virtual Machine (EVM)
+//! compatible blockchains.
 //!
-//! This module provides a standardized interface for working with EVM-based chains through
-//! the `EvmBaseClient` trait and chain-specific implementations.
+//! It includes functionality for interacting with Ethereum mainnet as well as
+//! various sidechains, L2s, and alternative EVM-compatible chains.
 
-// Core functionality
+// Base client type re-exported at the crate level
+pub use base_client::EvmBaseClient;
+
+// Chain-specific errors and utils
+pub mod errors;
+pub mod utils;
+pub mod types;
 pub mod base_client;
 pub mod generic_client;
-pub mod types;
-pub mod utils;
+
+// Crypto implementations with dependency isolation
+mod crypto; // Original implementation - kept for transition
+pub mod crypto_adapter; // New fully isolated implementation with type translation
+
+#[cfg(test)]
+mod crypto_adapter_test; // Tests for the crypto adapter
+
+// Flashbots bundle support - available regardless of features
+pub mod bundle;
 
 // Chain-specific implementations
 pub mod chains;
 
-// Error types
-pub mod errors;
+// Internal re-exports for convenience
+pub use generic_client::{GenericEvmClient, EvmClientConfig};
 
 //-----------------------------------------------------------------------------
 // Public Exports
 //-----------------------------------------------------------------------------
 
 // Re-export key types for easier access
-pub use base_client::EvmBaseClient;
 pub use types::{EvmAddress, EvmBytes, EvmHash, EvmLog, EvmTransactionReceipt, EvmTransactionRequest, EvmU256};
 pub use errors::EvmError;
 
@@ -32,5 +46,5 @@ pub use errors::EvmError;
 pub use chains::ethereum::EthereumClient;
 pub use chains::base::{BaseClient, BaseNetwork};
 
-// Re-export client configurations
-pub use generic_client::{EvmClientConfig, GenericEvmClient};
+// Re-export the crypto adapter for public use
+pub use crypto_adapter::{keccak256, sign_message, address_from_private_key, has_ethers_backend, get_active_backend_type};
