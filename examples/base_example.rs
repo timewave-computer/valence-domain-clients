@@ -12,12 +12,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = BaseClient::new(BaseNetwork::Sepolia, None)?;
     
     // Print information about the client
-    println!("Connected to Base network with chain ID: {}", client.chain_id());
+    println!("Connected to Base network with chain ID: {}", client.network_chain_id());
     println!("Network explorer URL: {}", client.explorer_url());
     
     // Get the latest block number
-    let block_number = client.client().block_number().await?;
+    let block_number = client.get_block_number().await?;
     println!("Latest block number: {}", block_number);
+    
+    // Get the chain ID from the network
+    let chain_id = client.get_chain_id().await?;
+    println!("Chain ID from RPC: {}", chain_id);
+    
+    // Get the current gas price
+    let gas_price = client.get_gas_price().await?;
+    println!("Current gas price: {:#?} wei", gas_price.0);
     
     // You can also create a client using a configuration file
     let config_path = Path::new("src/config/base_networks.json");
@@ -29,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(config_path),
         )?;
         
-        println!("File-based client chain ID: {}", file_client.chain_id());
+        println!("File-based client chain ID: {}", file_client.network_chain_id());
     } else {
         println!("\nConfiguration file not found at: {}", config_path.display());
         println!("Run 'nix run .#fetch-protos -- --base' to generate the config file");

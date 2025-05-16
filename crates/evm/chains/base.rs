@@ -6,15 +6,17 @@
 //!
 //! This module provides the `BaseClient` for interacting with Base mainnet and testnet.
 
+use async_trait::async_trait;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::fs;
 
 use crate::core::error::ClientError;
+use crate::core::transaction::TransactionResponse;
 use crate::evm::base_client::EvmBaseClient;
 use crate::evm::generic_client::{EvmClientConfig, GenericEvmClient};
-use crate::evm::types::EvmAddress;
+use crate::evm::types::{EvmAddress, EvmBytes, EvmHash, EvmTransactionRequest, EvmU256};
 
 /// Network options for Base blockchain
 #[derive(Debug, Clone, Copy)]
@@ -74,7 +76,6 @@ pub struct BaseNetworkInfo {
 }
 
 /// Base client for interacting with the Base blockchain
-#[derive(Debug, Clone)]
 pub struct BaseClient {
     inner: GenericEvmClient,
     network: BaseNetwork,
@@ -89,10 +90,12 @@ impl BaseClient {
         let config = EvmClientConfig {
             chain_id: network.chain_id(),
             rpc_url: network.rpc_url().to_string(),
-            private_key: private_key.map(String::from),
+            gas_adjustment: 1.3, // Add 30% to gas estimates
+            default_gas_limit: 1_000_000, // Default gas limit
+            max_gas_price_gwei: 100.0, // Maximum 100 gwei for gas price
         };
 
-        let inner = GenericEvmClient::new(config)?;
+        let inner = GenericEvmClient::new(config);
 
         Ok(Self {
             inner,
@@ -110,10 +113,10 @@ impl BaseClient {
         if let Some(path) = config_path {
             if path.exists() {
                 let config_str = fs::read_to_string(path)
-                    .map_err(|e| ClientError::ConfigurationError(format!("Failed to read config file: {}", e)))?;
+                    .map_err(|e| ClientError::ClientError(format!("Failed to read config file: {}", e)))?;
                 
                 let config: BaseNetworkConfig = serde_json::from_str(&config_str)
-                    .map_err(|e| ClientError::ConfigurationError(format!("Failed to parse config file: {}", e)))?;
+                    .map_err(|e| ClientError::ClientError(format!("Failed to parse config file: {}", e)))?;
                 
                 let (rpc_url, chain_id) = match network {
                     BaseNetwork::Mainnet => (
@@ -129,10 +132,12 @@ impl BaseClient {
                 let config = EvmClientConfig {
                     chain_id,
                     rpc_url,
-                    private_key: private_key.map(String::from),
+                    gas_adjustment: 1.3, // Add 30% to gas estimates
+                    default_gas_limit: 1_000_000, // Default gas limit
+                    max_gas_price_gwei: 100.0, // Maximum 100 gwei for gas price
                 };
                 
-                let inner = GenericEvmClient::new(config)?;
+                let inner = GenericEvmClient::new(config);
                 
                 return Ok(Self {
                     inner,
@@ -151,7 +156,7 @@ impl BaseClient {
     }
 
     /// Get the chain ID for the current network
-    pub fn chain_id(&self) -> u64 {
+    pub fn network_chain_id(&self) -> u64 {
         self.network.chain_id()
     }
 
@@ -162,20 +167,65 @@ impl BaseClient {
 }
 
 /// Implement EvmBaseClient for BaseClient by delegating to the inner GenericEvmClient
+#[async_trait]
 impl EvmBaseClient for BaseClient {
-    fn chain_id(&self) -> u64 {
-        self.inner.chain_id()
+    fn evm_signer_address(&self) -> EvmAddress {
+        self.inner.evm_signer_address()
     }
 
-    fn client(&self) -> Arc<alloy_transport_http::Http> {
-        self.inner.client()
+    async fn get_balance(&self, address: &EvmAddress) -> Result<EvmU256, ClientError> {
+        self.inner.get_balance(address).await
     }
 
-    fn signer(&self) -> Option<Arc<dyn alloy_signer::Signer + Send + Sync>> {
-        self.inner.signer()
+    async fn get_nonce(&self, address: &EvmAddress) -> Result<u64, ClientError> {
+        self.inner.get_nonce(address).await
     }
 
-    fn signer_address(&self) -> Option<EvmAddress> {
-        self.inner.signer_address()
+    async fn send_raw_transaction(&self, tx_bytes: &EvmBytes) -> Result<EvmHash, ClientError> {
+        self.inner.send_raw_transaction(tx_bytes).await
+    }
+
+    async fn send_transaction(&self, tx: &EvmTransactionRequest) -> Result<TransactionResponse, ClientError> {
+        self.inner.send_transaction(tx).await
+    }
+
+    async fn get_transaction(&self, tx_hash: &EvmHash) -> Result<Option<TransactionResponse>, ClientError> {
+        self.inner.get_transaction(tx_hash).await
+    }
+
+    async fn wait_for_transaction_receipt(&self, tx_hash: &EvmHash) -> Result<TransactionResponse, ClientError> {
+        self.inner.wait_for_transaction_receipt(tx_hash).await
+    }
+
+    async fn get_block_number(&self) -> Result<u64, ClientError> {
+        self.inner.get_block_number().await
+    }
+
+    async fn get_chain_id(&self) -> Result<u64, ClientError> {
+        self.inner.get_chain_id().await
+    }
+
+    async fn get_gas_price(&self) -> Result<EvmU256, ClientError> {
+        self.inner.get_gas_price().await
+    }
+
+    async fn call_contract(
+        &self,
+        to: &EvmAddress,
+        data: &EvmBytes,
+        from: Option<&EvmAddress>,
+        block: Option<u64>,
+    ) -> Result<EvmBytes, ClientError> {
+        self.inner.call_contract(to, data, from, block).await
+    }
+
+    async fn estimate_gas(
+        &self,
+        to: Option<&EvmAddress>,
+        data: &EvmBytes,
+        value: Option<EvmU256>,
+        from: Option<&EvmAddress>,
+    ) -> Result<EvmU256, ClientError> {
+        self.inner.estimate_gas(to, data, value, from).await
     }
 } 

@@ -11,6 +11,12 @@ mod cosmos {
     // mod grpc_client_tests; // Temporarily disabled - moved to tests/temp
 }
 
+// EVM module tests
+mod evm {
+    mod ethereum_tests;
+    mod base_tests;
+}
+
 // Protocol buffer tests
 mod proto {
     mod mod_tests;

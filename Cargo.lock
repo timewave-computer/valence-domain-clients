@@ -5607,6 +5607,7 @@ dependencies = [
  "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tonic 0.12.3",

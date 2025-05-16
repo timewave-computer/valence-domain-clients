@@ -1,0 +1,16 @@
+{
+  "networks": {
+    "mainnet": {
+      "rpc": "https://mainnet.base.org",
+      "chainId": 8453,
+      "currencySymbol": "ETH",
+      "blockExplorer": "https://base.blockscout.com/"
+    },
+    "sepolia": {
+      "rpc": "https://sepolia.base.org",
+      "chainId": 84532, 
+      "currencySymbol": "ETH",
+      "blockExplorer": "https://sepolia-explorer.base.org"
+    }
+  }
+}
