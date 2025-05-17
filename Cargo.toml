@@ -13,6 +13,7 @@ members = [
     "crates/evm",
     "crates/cosmos",
     "crates/proto",
+    "crates/coprocessor",
     "examples",
     "."
 ]
@@ -30,8 +31,11 @@ gaia = ["valence-cosmos/gaia"]
 neutron = ["valence-cosmos/neutron"]
 osmosis = ["valence-cosmos/osmosis"]
 
+# Coprocessor support
+coprocessor = ["valence-coprocessor-client"]
+
 # Default features set - all functionality available
-default = ["ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble"]
+default = ["ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble", "coprocessor"]
 
 [dependencies]
 # Internal workspace crates
@@ -39,6 +43,7 @@ valence-core = { path = "crates/core", version = "0.1.0" }
 valence-evm = { path = "crates/evm", version = "0.1.0" }
 valence-cosmos = { path = "crates/cosmos", version = "0.1.0" }
 valence-proto = { path = "crates/proto", version = "0.1.0" }
+valence-coprocessor-client = { path = "crates/coprocessor", version = "0.1.0", optional = true }
 
 # Re-export dependencies needed for the main crate
 tokio = { version = "1.35.1", features = ["full"] }
@@ -53,6 +58,7 @@ tempfile = "3.8.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 cosmos-sdk-proto = "0.20.0"
+anyhow = "1.0.83"
 
 [lib]
 name = "valence_domain_clients"
@@ -60,3 +66,7 @@ path = "src/lib.rs"
 
 [build-dependencies]
 tonic-build = { version = "0.12.1", default-features = false, features = ["prost", "transport"] }
+
+[[example]]
+name = "coprocessor_client"
+path = "examples/coprocessor_client.rs"

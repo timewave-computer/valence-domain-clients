@@ -3208,6 +3208,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper-rustls"
+version = "0.27.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d191583f3da1305256f22463b9bb0471acad48a4e534a5218b9963e9c1f59b2"
+dependencies = [
+ "futures-util",
+ "http 1.3.1",
+ "hyper 1.6.0",
+ "hyper-util",
+ "rustls 0.23.27",
+ "rustls-pki-types",
+ "tokio",
+ "tokio-rustls 0.26.2",
+ "tower-service",
+]
+
+[[package]]
 name = "hyper-timeout"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4904,7 +4921,7 @@ dependencies = [
  "http 0.2.12",
  "http-body 0.4.6",
  "hyper 0.14.32",
- "hyper-rustls",
+ "hyper-rustls 0.24.2",
  "hyper-tls 0.5.0",
  "ipnet",
  "js-sys",
@@ -4921,7 +4938,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sync_wrapper 0.1.2",
- "system-configuration",
+ "system-configuration 0.5.1",
  "tokio",
  "tokio-native-tls",
  "tokio-rustls 0.24.1",
@@ -4942,12 +4959,16 @@ checksum = "d19c46a6fdd48bc4dab94b6103fccc55d34c67cc0ad04653aad4ea2a07cd7bbb"
 dependencies = [
  "base64 0.22.1",
  "bytes",
+ "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
+ "h2 0.4.10",
  "http 1.3.1",
  "http-body 1.0.1",
  "http-body-util",
  "hyper 1.6.0",
+ "hyper-rustls 0.27.5",
  "hyper-tls 0.6.0",
  "hyper-util",
  "ipnet",
@@ -4963,6 +4984,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sync_wrapper 1.0.2",
+ "system-configuration 0.6.1",
  "tokio",
  "tokio-native-tls",
  "tower 0.5.2",
@@ -5950,7 +5972,18 @@ checksum = "ba3a3adc5c275d719af8cb4272ea1c4a6d668a777f37e115f6d11ddbc1c8e0e7"
 dependencies = [
  "bitflags 1.3.2",
  "core-foundation",
- "system-configuration-sys",
+ "system-configuration-sys 0.5.0",
+]
+
+[[package]]
+name = "system-configuration"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c879d448e9d986b661742763247d3693ed13609438cf3d006f51f5368a5ba6b"
+dependencies = [
+ "bitflags 2.9.1",
+ "core-foundation",
+ "system-configuration-sys 0.6.0",
 ]
 
 [[package]]
@@ -5958,6 +5991,16 @@ name = "system-configuration-sys"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a75fb188eb626b924683e3b95e3a48e63551fcfb51949de2f06a9d91dbee93c9"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
+]
+
+[[package]]
+name = "system-configuration-sys"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -6739,6 +6782,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
 
 [[package]]
+name = "valence-coprocessor-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "reqwest 0.12.15",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "valence-core"
 version = "0.1.0"
 dependencies = [
@@ -6788,6 +6846,7 @@ dependencies = [
 name = "valence-domain-clients"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "cosmos-sdk-proto 0.20.0",
  "hex",
@@ -6799,6 +6858,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tonic-build",
+ "valence-coprocessor-client",
  "valence-core",
  "valence-cosmos",
  "valence-evm",
