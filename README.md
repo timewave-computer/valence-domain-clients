@@ -31,6 +31,7 @@ The library supports the following features:
 
 - **EVM ecosystem**:
   - Ethereum
+  - Base
 
 ## Building
 
