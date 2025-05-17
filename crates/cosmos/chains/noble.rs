@@ -118,7 +118,7 @@ impl NobleClient {
             if i + 2 <= dest_addr.len() {
                 let byte = u8::from_str_radix(&dest_addr[i..i+2], 16)
                     .map_err(|e| ClientError::ParseError(
-                        format!("Failed to parse hex address: {}", e)
+                        format!("Failed to parse hex address: {e}")
                     ))?;
                 recipient_bytes.push(byte);
             }
@@ -136,7 +136,7 @@ impl NobleClient {
                 "from": self.get_signer_details().await?.address,
                 "amount": amount,
                 "destinationDomain": destination_domain.to_string(),
-                "mintRecipient": recipient_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>(),
+                "mintRecipient": recipient_bytes.iter().map(|b| format!("{b:02x}")).collect::<String>(),
                 "burnToken": burn_token_denom
             })).map_err(|e| ClientError::SerializationError(e.to_string()))?,
         };

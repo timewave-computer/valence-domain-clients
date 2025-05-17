@@ -186,17 +186,14 @@ pub struct CosmosBlockResults {
 
 /// Broadcast modes for Cosmos transactions.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum CosmosBroadcastMode {
     Async,
+    #[default]
     Sync,
     Block,
 }
 
-impl Default for CosmosBroadcastMode {
-    fn default() -> Self {
-        CosmosBroadcastMode::Sync
-    }
-}
 
 /// Fee settings for transactions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

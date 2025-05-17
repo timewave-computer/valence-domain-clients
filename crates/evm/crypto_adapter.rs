@@ -9,6 +9,7 @@
 
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Once;
+use std::sync::Mutex;
 
 use crate::core::error::ClientError;
 use crate::evm::types::EvmBytes;
@@ -32,9 +33,11 @@ trait CryptoBackend: Send + Sync {
     
     /// Sign a message using a private key
     /// Returns the signature bytes without recovery ID
+    #[allow(dead_code)]
     fn sign_message(&self, private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, u8), ClientError>;
     
     /// Compute Ethereum address from private key
+    #[allow(dead_code)]
     fn address_from_private_key(&self, private_key: &[u8; 32]) -> Result<[u8; 20], ClientError>;
 }
 
@@ -43,39 +46,35 @@ trait CryptoBackend: Send + Sync {
 //-----------------------------------------------------------------------------
 
 /// Provides cryptographic operations using tiny-keccak and libsecp256k1
+#[derive(Clone)]
 struct DefaultCryptoBackend;
 
 impl CryptoBackend for DefaultCryptoBackend {
     fn keccak256(&self, data: &[u8]) -> Vec<u8> {
         use tiny_keccak::{Hasher, Keccak};
         let mut hasher = Keccak::v256();
-        let mut output = [0u8; 32];
+        let mut result = [0u8; 32];
         hasher.update(data);
-        hasher.finalize(&mut output);
-        output.to_vec()
+        hasher.finalize(&mut result);
+        result.to_vec()
     }
     
     fn sign_message(&self, private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, u8), ClientError> {
         use libsecp256k1::{Message, SecretKey};
         
-        // Create secret key from private key bytes
+        // Create message object
+        let msg = Message::parse_slice(message)
+            .map_err(|_| ClientError::ClientError("Invalid message format".to_string()))?;
+        
+        // Parse private key
         let secret_key = SecretKey::parse(private_key)
             .map_err(|_| ClientError::ClientError("Invalid private key".to_string()))?;
         
-        // Create message from hash
-        let message_hash = self.keccak256(message);
-        let msg = Message::parse_slice(&message_hash)
-            .map_err(|_| ClientError::ClientError("Invalid message hash".to_string()))?;
-        
         // Sign the message
         let (signature, recovery_id) = libsecp256k1::sign(&msg, &secret_key);
+        let signature_bytes = signature.serialize().to_vec();
         
-        // Extract components
-        let mut sig_bytes = Vec::with_capacity(64);
-        sig_bytes.extend_from_slice(&signature.r.b32());
-        sig_bytes.extend_from_slice(&signature.s.b32());
-        
-        Ok((sig_bytes, recovery_id.serialize()))
+        Ok((signature_bytes, recovery_id.serialize()))
     }
     
     fn address_from_private_key(&self, private_key: &[u8; 32]) -> Result<[u8; 20], ClientError> {
@@ -113,6 +112,7 @@ mod ethers_backend {
     use ethers::core::k256::ecdsa::signature::Signer;
     use super::*;
     
+    #[derive(Clone)]
     pub struct EthersCryptoBackend;
     
     impl CryptoBackend for EthersCryptoBackend {
@@ -123,7 +123,7 @@ mod ethers_backend {
         fn sign_message(&self, private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, u8), ClientError> {
             // Create signing key from private key bytes
             let signing_key = SigningKey::from_bytes(private_key.into())
-                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {}", e)))?;
+                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {e}")))?;
             
             // Sign the message
             let signature: Signature = signing_key.sign(message);
@@ -138,7 +138,7 @@ mod ethers_backend {
             
             // Create secret key from private key bytes
             let secret_key = SecretKey::from_bytes(private_key.into())
-                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {}", e)))?;
+                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {e}")))?;
             
             // Get the public key
             let public_key = secret_key.public_key();
@@ -159,53 +159,86 @@ mod ethers_backend {
     }
     
     /// Try to create an ethers backend instance to check if it's available
-    pub fn create_ethers_backend() -> Option<Box<dyn CryptoBackend>> {
-        match std::panic::catch_unwind(|| {
-            Box::new(EthersCryptoBackend) as Box<dyn CryptoBackend>
-        }) {
-            Ok(backend) => Some(backend),
-            Err(_) => None,
-        }
+    pub fn create_ethers_backend() -> bool {
+        std::panic::catch_unwind(|| {
+            let _backend = EthersCryptoBackend;
+            true
+        }).is_ok_and(|ok| ok)
     }
 }
 
 // Stub module when ethers is not available
 #[cfg(not(feature = "_ethers_backend"))]
 mod ethers_backend {
-    use super::*;
-    
-    /// Always returns None when ethers backend is not available
-    pub fn create_ethers_backend() -> Option<Box<dyn CryptoBackend>> {
-        None
+    /// Always returns false when ethers backend is not available
+    pub fn create_ethers_backend() -> bool {
+        false
     }
 }
 
 //-----------------------------------------------------------------------------
-// Backend Factory - Runtime Backend Selection
+// Backend Enum - Safe Implementation without trait objects
 //-----------------------------------------------------------------------------
 
-/// Create a new backend of the requested type, or fallback to default
-fn create_backend(backend_type: u8) -> Box<dyn CryptoBackend> {
-    match backend_type {
-        BACKEND_ETHERS => {
-            // Try to create ethers backend first
-            match ethers_backend::create_ethers_backend() {
-                Some(backend) => return backend,
-                None => {
-                    // Fallback to default if ethers backend failed
-                    CURRENT_BACKEND.store(BACKEND_DEFAULT, Ordering::SeqCst);
-                }
-            }
+/// Enum to represent the different backend types
+#[derive(Clone)]
+enum BackendImpl {
+    Default(DefaultCryptoBackend),
+    #[cfg(feature = "_ethers_backend")]
+    Ethers(ethers_backend::EthersCryptoBackend),
+}
+
+impl BackendImpl {
+    fn keccak256(&self, data: &[u8]) -> Vec<u8> {
+        match self {
+            BackendImpl::Default(backend) => backend.keccak256(data),
+            #[cfg(feature = "_ethers_backend")]
+            BackendImpl::Ethers(backend) => backend.keccak256(data),
         }
-        _ => {}
     }
     
-    // Default backend as fallback
-    Box::new(DefaultCryptoBackend)
+    fn sign_message(&self, private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, u8), ClientError> {
+        match self {
+            BackendImpl::Default(backend) => backend.sign_message(private_key, message),
+            #[cfg(feature = "_ethers_backend")]
+            BackendImpl::Ethers(backend) => backend.sign_message(private_key, message),
+        }
+    }
+    
+    fn address_from_private_key(&self, private_key: &[u8; 32]) -> Result<[u8; 20], ClientError> {
+        match self {
+            BackendImpl::Default(backend) => backend.address_from_private_key(private_key),
+            #[cfg(feature = "_ethers_backend")]
+            BackendImpl::Ethers(backend) => backend.address_from_private_key(private_key),
+        }
+    }
 }
 
 /// Global singleton instance of the crypto backend
-static mut BACKEND_INSTANCE: Option<Box<dyn CryptoBackend>> = None;
+static BACKEND_INSTANCE: Mutex<Option<BackendImpl>> = Mutex::new(None);
+
+/// Create a new backend of the requested type, or fallback to default
+fn create_backend(backend_type: u8) -> BackendImpl {
+    if backend_type == BACKEND_ETHERS {
+        // Try to create ethers backend if available
+        #[cfg(feature = "_ethers_backend")]
+        if ethers_backend::create_ethers_backend() {
+            return BackendImpl::Ethers(ethers_backend::EthersCryptoBackend);
+        }
+        
+        // Fallback to default if ethers backend failed or not available
+        CURRENT_BACKEND.store(BACKEND_DEFAULT, Ordering::SeqCst);
+    }
+    
+    // Default backend as fallback
+    BackendImpl::Default(DefaultCryptoBackend)
+}
+
+/// Initialize the crypto backend system
+/// This is called automatically but can also be called explicitly if needed
+pub fn initialize_crypto_backend() {
+    initialize();
+}
 
 /// Initialize the crypto backend system
 fn initialize() {
@@ -225,23 +258,21 @@ fn initialize() {
         CURRENT_BACKEND.store(backend_type, Ordering::SeqCst);
         
         // Store the backend instance
-        unsafe {
-            BACKEND_INSTANCE = Some(backend);
-        }
+        let mut instance = BACKEND_INSTANCE.lock().unwrap();
+        *instance = Some(backend);
     });
 }
 
-/// Get the global backend instance
-fn get_backend() -> &'static dyn CryptoBackend {
+/// Get the global backend instance safely by cloning it
+fn get_backend() -> BackendImpl {
     // Ensure initialization
     initialize();
     
-    unsafe {
-        // This is safe because:
-        // 1. We only call this after initialize() has been called
-        // 2. The static is initialized exactly once by the INIT Once guard
-        // 3. We never modify BACKEND_INSTANCE after initialization
-        BACKEND_INSTANCE.as_ref().unwrap().as_ref()
+    // Clone the instance to avoid holding the lock
+    let locked = BACKEND_INSTANCE.lock().unwrap();
+    match &*locked {
+        Some(backend) => backend.clone(),
+        None => panic!("Crypto backend not initialized") // This should never happen due to initialize()
     }
 }
 
@@ -251,18 +282,21 @@ fn get_backend() -> &'static dyn CryptoBackend {
 
 /// Compute Keccak-256 hash of data
 pub fn keccak256(data: &[u8]) -> EvmBytes {
-    let result = get_backend().keccak256(data);
+    let backend = get_backend();
+    let result = backend.keccak256(data);
     EvmBytes(result)
 }
 
 /// Sign a message with a private key
 pub fn sign_message(private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, u8), ClientError> {
-    get_backend().sign_message(private_key, message)
+    let backend = get_backend();
+    backend.sign_message(private_key, message)
 }
 
 /// Get Ethereum address from private key
 pub fn address_from_private_key(private_key: &[u8; 32]) -> Result<[u8; 20], ClientError> {
-    get_backend().address_from_private_key(private_key)
+    let backend = get_backend();
+    backend.address_from_private_key(private_key)
 }
 
 /// Check if the ethers backend is available and working

@@ -78,10 +78,10 @@ impl GaiaClient {
         amount: u128,
     ) -> Result<TransactionResponse, ClientError> {
         let delegator: cosmrs::AccountId = self.get_signer_details().await?.address.0.parse()
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse delegator address: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse delegator address: {e}")))?;
         
         let _validator = validator_address.parse::<String>()
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse validator address: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse validator address: {e}")))?;
             
         // Create delegation message
         // Create a staking message using our own proto definitions
@@ -122,7 +122,7 @@ impl GaiaClient {
         amount: u128,
     ) -> Result<TransactionResponse, ClientError> {
         let delegator: cosmrs::AccountId = self.get_signer_details().await?.address.0.parse()
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse delegator address: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse delegator address: {e}")))?;
         
         // Create undelegation message using direct Any message
         let any_msg = prost_types::Any {
@@ -157,7 +157,7 @@ impl GaiaClient {
         validator_address: &str,
     ) -> Result<TransactionResponse, ClientError> {
         let delegator: cosmrs::AccountId = self.get_signer_details().await?.address.0.parse()
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse delegator address: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse delegator address: {e}")))?;
         
         // Create withdraw rewards message using direct Any message
         let any_msg = prost_types::Any {

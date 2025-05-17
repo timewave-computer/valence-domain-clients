@@ -112,10 +112,10 @@ impl BaseClient {
         if let Some(path) = config_path {
             if path.exists() {
                 let config_str = fs::read_to_string(path)
-                    .map_err(|e| ClientError::ClientError(format!("Failed to read config file: {}", e)))?;
+                    .map_err(|e| ClientError::ClientError(format!("Failed to read config file: {e}")))?;
                 
                 let config: BaseNetworkConfig = serde_json::from_str(&config_str)
-                    .map_err(|e| ClientError::ClientError(format!("Failed to parse config file: {}", e)))?;
+                    .map_err(|e| ClientError::ClientError(format!("Failed to parse config file: {e}")))?;
                 
                 let (rpc_url, chain_id) = match network {
                     BaseNetwork::Mainnet => (

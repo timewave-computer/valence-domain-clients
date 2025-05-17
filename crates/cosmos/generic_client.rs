@@ -205,12 +205,12 @@ impl crate::cosmos::base_client::CosmosBaseClient for GenericCosmosClient {
 
         // Parse amount - IBC uses string amounts
         let amount_u128 = amount.parse::<u128>().map_err(|e| {
-            ClientError::ParseError(format!("Failed to parse amount '{}': {}", amount, e))
+            ClientError::ParseError(format!("Failed to parse amount '{amount}': {e}"))
         })?;
 
         // Create cosmrs::Coin for the amount
         let denom_parsed: CosmrsDenom = denom.parse().map_err(|e| {
-            ClientError::ParseError(format!("Invalid denom '{}': {}", denom, e))
+            ClientError::ParseError(format!("Invalid denom '{denom}': {e}"))
         })?;
 
         // Calculate timeout timestamp (current time + timeout_seconds)
@@ -419,8 +419,7 @@ impl GenericCosmosClient {
         let mut tx_bytes = Vec::new();
         tx_for_sim.encode(&mut tx_bytes).map_err(|e| {
             ClientError::ClientError(format!(
-                "Failed to encode ProtoTx for simulation: {}",
-                e
+                "Failed to encode ProtoTx for simulation: {e}"
             ))
         })?;
 
@@ -429,8 +428,7 @@ impl GenericCosmosClient {
                 .await
                 .map_err(|e| {
                     ClientError::ClientError(format!(
-                        "Failed to connect to gRPC for simulation: {}",
-                        e
+                        "Failed to connect to gRPC for simulation: {e}"
                     ))
                 })?;
 
@@ -441,7 +439,7 @@ impl GenericCosmosClient {
             .simulate(sim_req)
             .await
             .map_err(|e| {
-                ClientError::ClientError(format!("Failed to simulate tx: {}", e))
+                ClientError::ClientError(format!("Failed to simulate tx: {e}"))
             })?
             .into_inner();
 
@@ -517,8 +515,7 @@ impl GenericCosmosClient {
                 .await
                 .map_err(|e| {
                     ClientError::ClientError(format!(
-                        "Failed to connect to gRPC for broadcast: {}",
-                        e
+                        "Failed to connect to gRPC for broadcast: {e}"
                     ))
                 })?;
         
@@ -530,8 +527,7 @@ impl GenericCosmosClient {
         let chain_default_denom: CosmrsDenom =
             chain_default_denom_str.parse().map_err(|e| {
                 ClientError::ParseError(format!(
-                    "Failed to parse chain_default_denom '{}': {}",
-                    chain_default_denom_str, e
+                    "Failed to parse chain_default_denom '{chain_default_denom_str}': {e}"
                 ))
             })?;
 
@@ -561,8 +557,7 @@ impl GenericCosmosClient {
             .await
             .map_err(|e| {
                 ClientError::ClientError(format!(
-                    "Failed to broadcast tx: {}",
-                    e
+                    "Failed to broadcast tx: {e}"
                 ))
             })?
             .into_inner();
@@ -588,22 +583,19 @@ impl GenericCosmosClient {
 
         let from_account_id: AccountId = from_address_str.parse().map_err(|e| {
             ClientError::ParseError(format!(
-                "Failed to parse from_address (signer) '{}': {}",
-                from_address_str, e
+                "Failed to parse from_address (signer) '{from_address_str}': {e}"
             ))
         })?;
 
         let to_account_id: AccountId = to_address_str.parse().map_err(|e| {
             ClientError::ParseError(format!(
-                "Failed to parse to_address '{}': {}",
-                to_address_str, e
+                "Failed to parse to_address '{to_address_str}': {e}"
             ))
         })?;
 
         let denom_parsed: CosmrsDenom = denom_str.parse().map_err(|e| {
             ClientError::ParseError(format!(
-                "Invalid denom '{}': {}",
-                denom_str, e
+                "Invalid denom '{denom_str}': {e}"
             ))
         })?;
 
@@ -620,8 +612,7 @@ impl GenericCosmosClient {
 
         let any_msg = msg_send.to_any().map_err(|e| {
             ClientError::ClientError(format!(
-                "Failed to convert MsgSend to Any: {}",
-                e
+                "Failed to convert MsgSend to Any: {e}"
             ))
         })?;
 
@@ -638,8 +629,7 @@ impl GenericCosmosClient {
             .await
             .map_err(|e| {
                 ClientError::ClientError(format!(
-                    "Failed to connect to Tendermint service for latest_block_header: {}",
-                    e
+                    "Failed to connect to Tendermint service for latest_block_header: {e}"
                 ))
             })?;
         let request = tonic::Request::new(GetLatestBlockRequest {});
@@ -650,8 +640,7 @@ impl GenericCosmosClient {
                 .await
                 .map_err(|e| {
                     ClientError::QueryError(format!(
-                        "Failed to get latest block: {}",
-                        e
+                        "Failed to get latest block: {e}"
                     ))
                 })?;
 
@@ -712,8 +701,7 @@ impl GenericCosmosClient {
                 .await
                 .map_err(|e| {
                     ClientError::ClientError(format!(
-                    "Failed to connect to Tendermint service for block_results: {}",
-                    e
+                    "Failed to connect to Tendermint service for block_results: {e}"
                 ))
                 })?;
 
@@ -726,8 +714,7 @@ impl GenericCosmosClient {
             .await
             .map_err(|e| {
                 ClientError::QueryError(format!(
-                    "Failed to get block by height {}: {}",
-                    height, e
+                    "Failed to get block by height {height}: {e}"
                 ))
             })?;
 
@@ -744,8 +731,7 @@ impl GenericCosmosClient {
             })
         } else {
             Err(ClientError::QueryError(format!(
-                "Block {} not found or empty response",
-                height
+                "Block {height} not found or empty response"
             )))
         }
     }
@@ -760,8 +746,7 @@ impl GenericCosmosClient {
                 .await
                 .map_err(|e| {
                     ClientError::ClientError(format!(
-                    "Failed to connect to BankQuery service for query_balance: {}",
-                    e
+                    "Failed to connect to BankQuery service for query_balance: {e}"
                 ))
                 })?;
 
@@ -771,7 +756,7 @@ impl GenericCosmosClient {
         });
 
         let response = bank_query_client.balance(request).await.map_err(|e| {
-            ClientError::QueryError(format!("Failed to query balance: {}", e))
+            ClientError::QueryError(format!("Failed to query balance: {e}"))
         })?;
 
         let balance_response: QueryBalanceResponse = response.into_inner();
@@ -803,8 +788,7 @@ impl GenericCosmosClient {
             .await
             .map_err(|e| {
                 ClientError::ClientError(format!(
-                    "Failed to connect to AuthQuery service for query_module_account: {}",
-                    e
+                    "Failed to connect to AuthQuery service for query_module_account: {e}"
                 ))
             })?;
 
@@ -817,8 +801,7 @@ impl GenericCosmosClient {
             .await
             .map_err(|e| {
                 ClientError::QueryError(format!(
-                    "Failed to query module account by name '{}': {}",
-                    name, e
+                    "Failed to query module account by name '{name}': {e}"
                 ))
             })?;
 
@@ -832,8 +815,7 @@ impl GenericCosmosClient {
                     ProtoModuleAccount::decode(account_any.value.as_slice())
                         .map_err(|e| {
                             ClientError::ParseError(format!(
-                                "Failed to decode ModuleAccount for '{}': {}",
-                                name, e
+                                "Failed to decode ModuleAccount for '{name}': {e}"
                             ))
                         })?;
 
@@ -904,8 +886,7 @@ impl GenericCosmosClient {
             }
         } else {
             Err(ClientError::QueryError(format!(
-                "Module account '{}' not found or empty response",
-                name
+                "Module account '{name}' not found or empty response"
             )))
         }
     }
@@ -921,16 +902,14 @@ impl GenericCosmosClient {
             .await
             .map_err(|e| {
                 ClientError::ClientError(format!(
-                    "Failed to connect to gRPC for polling: {}",
-                    e
+                    "Failed to connect to gRPC for polling: {e}"
                 ))
             })?;
 
         loop {
             if attempts >= DEFAULT_POLL_MAX_ATTEMPTS {
                 return Err(ClientError::TimeoutError(format!(
-                    "Timeout polling for tx_hash '{}' after {} attempts.",
-                    tx_hash, DEFAULT_POLL_MAX_ATTEMPTS
+                    "Timeout polling for tx_hash '{tx_hash}' after {DEFAULT_POLL_MAX_ATTEMPTS} attempts."
                 )));
             }
             attempts += 1;
@@ -960,8 +939,7 @@ impl GenericCosmosClient {
                     } else {
                         // Other gRPC or network error
                         return Err(ClientError::QueryError(format!(
-                            "Failed to poll for tx_hash '{}': {}",
-                            tx_hash, status
+                            "Failed to poll for tx_hash '{tx_hash}': {status}"
                         )));
                     }
                 }
@@ -982,8 +960,7 @@ impl GenericCosmosClient {
         loop {
             if attempts >= max_attempts {
                 return Err(ClientError::TimeoutError(format!(
-                    "Timeout polling for balance >= {} {} for address '{}' after {} attempts.",
-                    min_amount, denom, address, max_attempts
+                    "Timeout polling for balance >= {min_amount} {denom} for address '{address}' after {max_attempts} attempts."
                 )));
             }
             attempts += 1;
@@ -998,8 +975,7 @@ impl GenericCosmosClient {
                     // It might be better to log and continue polling for some errors,
                     // but for now, propagate the error immediately.
                     return Err(ClientError::QueryError(format!(
-                        "Error during balance poll for address '{}' (attempt {}): {}",
-                        address, attempts, e
+                        "Error during balance poll for address '{address}' (attempt {attempts}): {e}"
                     )));
                 }
             }

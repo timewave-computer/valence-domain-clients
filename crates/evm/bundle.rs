@@ -205,7 +205,7 @@ pub fn create_eth_bundle(
 ) -> EthSendBundleParams {
     EthSendBundleParams {
         txs: transactions,
-        block_number: format!("0x{:x}", target_block),
+        block_number: format!("0x{target_block:x}"),
         min_timestamp: None,
         max_timestamp: None,
         reverting_tx_hashes: reverting_hashes,
@@ -225,12 +225,12 @@ pub fn create_mev_bundle(
         .map(|(tx, can_revert)| BundleItem::Transaction { tx, can_revert })
         .collect();
     
-    let max_block_str = max_block.map(|block| format!("0x{:x}", block));
+    let max_block_str = max_block.map(|block| format!("0x{block:x}"));
     
     MevSendBundleParams {
         version: "v0.1".to_string(),
         inclusion: BundleInclusion {
-            block: format!("0x{:x}", target_block),
+            block: format!("0x{target_block:x}"),
             max_block: max_block_str,
         },
         body,

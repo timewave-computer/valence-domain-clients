@@ -139,7 +139,7 @@ pub(crate) fn convert_from_proto_tx_response(
         data: data_hex_string,
         raw_log: None,
         timestamp: value.timestamp.parse::<i64>().map_err(|e| {
-            ClientError::ParseError(format!("Failed to parse timestamp: {}", e))
+            ClientError::ParseError(format!("Failed to parse timestamp: {e}"))
         })?,
         block_hash: None,
         original_request_payload: None,

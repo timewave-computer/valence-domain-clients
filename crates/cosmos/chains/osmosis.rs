@@ -74,8 +74,7 @@ impl OsmosisClient {
         // For now, return a clear error about the implementation status
         Err(ClientError::NotImplemented(
             format!("swap_tokens functionality awaiting Osmosis proto implementation. \
-                   Would swap {} {} to at least {} {}", 
-                   token_in_amount, token_in_denom, min_output_amount, token_out_denom)
+                   Would swap {token_in_amount} {token_in_denom} to at least {min_output_amount} {token_out_denom}")
         ))
     }
 
@@ -102,7 +101,7 @@ impl OsmosisClient {
             
         Err(ClientError::NotImplemented(
             format!("add_liquidity functionality awaiting Osmosis proto implementation. \
-                   Would add [{}] to pool {}", tokens_desc, pool_id)
+                   Would add [{tokens_desc}] to pool {pool_id}")
         ))
     }
 }
@@ -139,7 +138,7 @@ impl GrpcSigningClient for OsmosisClient {
         match chain_name {
             "osmosis" => Ok(DEFAULT_OSMOSIS_GAS_PRICE),
             _ => Err(ClientError::NotImplemented(
-                format!("Gas config for chain {} with denom {} not implemented", chain_name, denom)
+                format!("Gas config for chain {chain_name} with denom {denom} not implemented")
             )),
         }
     }

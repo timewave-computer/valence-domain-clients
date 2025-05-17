@@ -18,7 +18,7 @@ impl ProtoTimestamp {
         &self,
         seconds: i64,
     ) -> Self {
-        let mut new_timestamp = self.0.clone();
+        let mut new_timestamp = self.0;
         new_timestamp.seconds += seconds;
         ProtoTimestamp(new_timestamp)
     }

@@ -109,7 +109,7 @@ impl FromStr for EvmAddress {
         }
         
         let bytes = hex::decode(s)
-            .map_err(|e| format!("Invalid hex: {}", e))?;
+            .map_err(|e| format!("Invalid hex: {e}"))?;
             
         let mut address = [0u8; 20];
         address.copy_from_slice(&bytes);
@@ -134,7 +134,7 @@ impl FromStr for EvmHash {
         }
         
         let bytes = hex::decode(s)
-            .map_err(|e| format!("Invalid hex: {}", e))?;
+            .map_err(|e| format!("Invalid hex: {e}"))?;
             
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&bytes);
@@ -148,7 +148,7 @@ impl EvmBytes {
     pub fn from_hex(hex_str: &str) -> Result<Self, String> {
         let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
         let bytes = hex::decode(hex_str)
-            .map_err(|e| format!("Invalid hex: {}", e))?;
+            .map_err(|e| format!("Invalid hex: {e}"))?;
         Ok(EvmBytes(bytes))
     }
     
@@ -169,16 +169,16 @@ impl EvmU256 {
     pub fn from_u64(value: u64) -> Self {
         EvmU256([value, 0, 0, 0])
     }
-    
-    /// Convert to a decimal string
-    pub fn to_string(&self) -> String {
+}
+
+impl fmt::Display for EvmU256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Simple implementation for demonstration
         // In practice, would need proper big integer handling
         if self.0[1] == 0 && self.0[2] == 0 && self.0[3] == 0 {
-            self.0[0].to_string()
+            write!(f, "{}", self.0[0])
         } else {
-            format!("{:016x}{:016x}{:016x}{:016x}", 
-                self.0[3], self.0[2], self.0[1], self.0[0])
+            write!(f, "[{}, {}, {}, {}]", self.0[0], self.0[1], self.0[2], self.0[3])
         }
     }
 }
@@ -288,7 +288,7 @@ mod tests {
         
         // Test to_string for complex case (all limbs have values)
         let complex_u256 = EvmU256([1, 2, 3, 4]);
-        assert_eq!(complex_u256.to_string(), "0000000000000004000000000000000300000000000000020000000000000001");
+        assert_eq!(complex_u256.to_string(), "[1, 2, 3, 4]");
         
         // Test serialization/deserialization
         let json = serde_json::to_string(&u256).unwrap();

@@ -109,8 +109,7 @@ impl SigningClient {
         let sender_account_id = public_key.account_id(prefix)?;
         let parsed_chain_id: CosmrsChainId = chain_id_str.parse().map_err(|e| {
             ClientError::ParseError(format!(
-                "Failed to parse chain_id '{}': {}",
-                chain_id_str, e
+                "Failed to parse chain_id '{chain_id_str}': {e}"
             ))
         })?;
 
@@ -131,8 +130,7 @@ impl SigningClient {
         let base_account = BaseAccount::decode(base_account_any.value.as_slice())
             .map_err(|e| {
                 ClientError::ParseError(format!(
-                    "Failed to decode BaseAccount: {}",
-                    e
+                    "Failed to decode BaseAccount: {e}"
                 ))
             })?;
 
@@ -153,14 +151,12 @@ impl SigningClient {
         let derivation_path =
             path.parse::<bip32::DerivationPath>().map_err(|e| {
                 ClientError::ClientError(format!(
-                    "Failed to parse derivation path '{}': {}",
-                    path, e
+                    "Failed to parse derivation path '{path}': {e}"
                 ))
             })?;
         let xprv = bip32::XPrv::new(seed_bytes).map_err(|e| {
             ClientError::ClientError(format!(
-                "Failed to create XPrv from seed: {}",
-                e
+                "Failed to create XPrv from seed: {e}"
             ))
         })?;
         
@@ -169,16 +165,14 @@ impl SigningClient {
         let child_xprv = derivation_path.into_iter().try_fold(xprv, |key, index| {
             key.derive_child(index).map_err(|e| {
                 ClientError::ClientError(format!(
-                    "Failed to derive child key at index {}: {}",
-                    index, e
+                    "Failed to derive child key at index {index}: {e}"
                 ))
             })
         })?;
         let secret_key = child_xprv.private_key(); // This is k256::SecretKey
         SigningKey::from_slice(secret_key.to_bytes().as_slice()).map_err(|e| {
             ClientError::ClientError(format!(
-                "Failed to create cosmrs::SigningKey from derived key: {}",
-                e
+                "Failed to create cosmrs::SigningKey from derived key: {e}"
             ))
         })
     }

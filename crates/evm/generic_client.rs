@@ -106,14 +106,14 @@ impl GenericEvmClient {
             
         let block_number = if let Some(block_num) = receipt["blockNumber"].as_str() {
             u64::from_str_radix(block_num.trim_start_matches("0x"), 16)
-                .map_err(|e| ClientError::ParseError(format!("Invalid block number: {}", e)))?
+                .map_err(|e| ClientError::ParseError(format!("Invalid block number: {e}")))?
         } else {
             0
         };
         
         let gas_used = if let Some(gas) = receipt["gasUsed"].as_str() {
             i64::from_str_radix(gas.trim_start_matches("0x"), 16)
-                .map_err(|e| ClientError::ParseError(format!("Invalid gas used: {}", e)))?
+                .map_err(|e| ClientError::ParseError(format!("Invalid gas used: {e}")))?
         } else {
             0
         };
@@ -123,7 +123,7 @@ impl GenericEvmClient {
         let status = receipt["status"].as_str()
             .map(|s| u32::from_str_radix(s.trim_start_matches("0x"), 16))
             .transpose()
-            .map_err(|e| ClientError::ParseError(format!("Invalid status: {}", e)))?
+            .map_err(|e| ClientError::ParseError(format!("Invalid status: {e}")))?
             .unwrap_or(0);
             
         // Parse logs as events
@@ -173,12 +173,12 @@ impl EvmBaseClient for GenericEvmClient {
         ]);
         
         let response: String = self.provider.call("eth_getBalance", params).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting balance: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting balance: {e}")))?;
             
         // Parse the hex string (simplified)
         let hex = response.trim_start_matches("0x");
         let value = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse balance: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse balance: {e}")))?;
             
         Ok(EvmU256::from_u64(value))
     }
@@ -190,12 +190,12 @@ impl EvmBaseClient for GenericEvmClient {
         ]);
         
         let response: String = self.provider.call("eth_getTransactionCount", params).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting nonce: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting nonce: {e}")))?;
             
         // Parse the hex string
         let hex = response.trim_start_matches("0x");
         let nonce = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse nonce: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse nonce: {e}")))?;
             
         Ok(nonce)
     }
@@ -206,11 +206,11 @@ impl EvmBaseClient for GenericEvmClient {
         ]);
         
         let response: String = self.provider.call("eth_sendRawTransaction", params).await
-            .map_err(|e| ClientError::ClientError(format!("Error sending raw tx: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error sending raw tx: {e}")))?;
             
         // Parse the transaction hash
         response.parse()
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse transaction hash: {}", e)))
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse transaction hash: {e}")))
     }
 
     async fn send_transaction(&self, tx: &EvmTransactionRequest) -> Result<TransactionResponse, ClientError> {
@@ -230,7 +230,7 @@ impl EvmBaseClient for GenericEvmClient {
         ]);
         
         let response: Value = self.provider.call("eth_getTransactionByHash", params).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting tx: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting tx: {e}")))?;
             
         if response.is_null() {
             return Ok(None);
@@ -239,7 +239,7 @@ impl EvmBaseClient for GenericEvmClient {
         // For transaction details, let's check if it has a receipt
         let receipt_params = json!([tx_hash.to_string()]);
         let receipt: Value = self.provider.call("eth_getTransactionReceipt", receipt_params).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting receipt: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting receipt: {e}")))?;
         
         if !receipt.is_null() {
             let response = self.receipt_to_response(receipt)?;
@@ -272,7 +272,7 @@ impl EvmBaseClient for GenericEvmClient {
             ]);
             
             let receipt: Value = self.provider.call("eth_getTransactionReceipt", params).await
-                .map_err(|e| ClientError::ClientError(format!("Error waiting for receipt: {}", e)))?;
+                .map_err(|e| ClientError::ClientError(format!("Error waiting for receipt: {e}")))?;
                 
             if !receipt.is_null() {
                 // Transaction has been mined
@@ -288,12 +288,12 @@ impl EvmBaseClient for GenericEvmClient {
 
     async fn get_block_number(&self) -> Result<u64, ClientError> {
         let response: String = self.provider.call("eth_blockNumber", json!([])).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting block number: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting block number: {e}")))?;
             
         // Parse the hex string
         let hex = response.trim_start_matches("0x");
         let block_number = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse block number: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse block number: {e}")))?;
             
         Ok(block_number)
     }
@@ -306,24 +306,24 @@ impl EvmBaseClient for GenericEvmClient {
         
         // Otherwise query from the node
         let response: String = self.provider.call("eth_chainId", json!([])).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting chain ID: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting chain ID: {e}")))?;
             
         // Parse the hex string
         let hex = response.trim_start_matches("0x");
         let chain_id = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse chain ID: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse chain ID: {e}")))?;
             
         Ok(chain_id)
     }
 
     async fn get_gas_price(&self) -> Result<EvmU256, ClientError> {
         let response: String = self.provider.call("eth_gasPrice", json!([])).await
-            .map_err(|e| ClientError::ClientError(format!("Error getting gas price: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error getting gas price: {e}")))?;
             
         // Parse the hex string (simplified)
         let hex = response.trim_start_matches("0x");
         let value = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse gas price: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse gas price: {e}")))?;
             
         Ok(EvmU256::from_u64(value))
     }
@@ -345,18 +345,18 @@ impl EvmBaseClient for GenericEvmClient {
         }
         
         let block_param = match block {
-            Some(num) => format!("0x{:x}", num),
+            Some(num) => format!("0x{num:x}"),
             None => "latest".to_string(),
         };
         
         let params = json!([call_object, block_param]);
         
         let response: String = self.provider.call("eth_call", params).await
-            .map_err(|e| ClientError::ClientError(format!("Error calling contract: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error calling contract: {e}")))?;
             
         // Convert to EvmBytes
         EvmBytes::from_hex(&response)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse call result: {}", e)))
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse call result: {e}")))
     }
 
     async fn estimate_gas(
@@ -385,12 +385,12 @@ impl EvmBaseClient for GenericEvmClient {
         let params = json!([call_object]);
         
         let response: String = self.provider.call("eth_estimateGas", params).await
-            .map_err(|e| ClientError::ClientError(format!("Error estimating gas: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Error estimating gas: {e}")))?;
             
         // Parse the hex string (simplified)
         let hex = response.trim_start_matches("0x");
         let value = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse gas estimate: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse gas estimate: {e}")))?;
             
         // Apply gas adjustment
         let adjusted_value = (value as f64 * self.config.gas_adjustment) as u64;
@@ -424,20 +424,20 @@ impl Provider {
             .json(&request)
             .send()
             .await
-            .map_err(|e| format!("Connection error: {}", e))?;
+            .map_err(|e| format!("Connection error: {e}"))?;
             
         let response_json: Value = response.json()
             .await
-            .map_err(|e| format!("Serialization error: {}", e))?;
+            .map_err(|e| format!("Serialization error: {e}"))?;
             
         if let Some(error) = response_json.get("error") {
-            return Err(format!("RPC error: {}", error));
+            return Err(format!("RPC error: {error}"));
         }
         
         let result = response_json.get("result")
             .ok_or_else(|| "Missing 'result' field in response".to_string())?;
             
         serde_json::from_value(result.clone())
-            .map_err(|e| format!("Deserialization error: {}", e))
+            .map_err(|e| format!("Deserialization error: {e}"))
     }
 }

@@ -34,7 +34,7 @@ pub fn validate_cosmos_address(address: &str, prefix: &str) -> bool {
 /// Converts a human-readable address with a given prefix to a Cosmos address
 pub fn to_cosmos_address(hrp: &str, bytes: &[u8]) -> Result<String, ClientError> {
     bech32::encode(hrp, bytes.to_base32(), Variant::Bech32)
-        .map_err(|e| ClientError::ParseError(format!("Failed to create Cosmos address: {}", e)))
+        .map_err(|e| ClientError::ParseError(format!("Failed to create Cosmos address: {e}")))
 }
 
 /// Creates a fee object for Cosmos transactions
@@ -64,7 +64,7 @@ pub fn calculate_gas_limit(simulated_gas: u64, gas_adjustment: f64) -> u64 {
 /// let formatted = format_coin_amount(1000000, "uatom"); // "1000000uatom"
 /// ```
 pub fn format_coin_amount(amount: u128, denom: &str) -> String {
-    format!("{}{}", amount, denom)
+    format!("{amount}{denom}")
 }
 
 /// Parse a coin string into amount and denomination
@@ -84,7 +84,7 @@ pub fn parse_coin_string(coin_str: &str) -> Result<(u128, String), ClientError> 
     let mut collecting_amount = true;
 
     for c in coin_str.chars() {
-        if collecting_amount && c.is_digit(10) {
+        if collecting_amount && c.is_ascii_digit() {
             amount_chars.push(c);
         } else {
             collecting_amount = false;
@@ -94,13 +94,13 @@ pub fn parse_coin_string(coin_str: &str) -> Result<(u128, String), ClientError> 
 
     if amount_chars.is_empty() || denom_chars.is_empty() {
         return Err(ClientError::ParseError(
-            format!("Invalid coin string format: {}", coin_str)
+            format!("Invalid coin string format: {coin_str}")
         ));
     }
 
     let amount = amount_chars.parse::<u128>()
         .map_err(|e| ClientError::ParseError(
-            format!("Failed to parse amount '{}' from coin string: {}", amount_chars, e)
+            format!("Failed to parse amount '{amount_chars}' from coin string: {e}")
         ))?;
 
     Ok((amount, denom_chars))

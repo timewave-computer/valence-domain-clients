@@ -20,9 +20,11 @@ pub trait CryptoBackend {
     
     /// Sign a message using a private key
     /// Returns the signature bytes (65 bytes including recovery id)
+    #[allow(dead_code)]
     fn sign_message(&self, private_key: &[u8; 32], message: &[u8]) -> Result<Vec<u8>, ClientError>;
     
     /// Get an Ethereum address from a private key
+    #[allow(dead_code)]
     fn address_from_private_key(&self, private_key: &[u8; 32]) -> Result<[u8; 20], ClientError>;
 }
 
@@ -138,7 +140,7 @@ pub fn has_ethers_support() -> bool {
     {
         match std::panic::catch_unwind(|| {
             // Try to create an instance of the ethers backend
-            let _test_backend = ethers_backend::EthersCryptoBackend::default();
+            let _test_backend = ethers_backend::EthersCryptoBackend;
             true
         }) {
             Ok(true) => true,
@@ -170,7 +172,7 @@ fn get_crypto_backend_impl() -> Box<dyn CryptoBackend> {
             // This block is compiled only when "_ethers_backend" feature is enabled
             #[cfg(feature = "_ethers_backend")]
             {
-                Box::new(ethers_backend::EthersCryptoBackend::default())
+                Box::new(ethers_backend::EthersCryptoBackend)
             }
             
             // This block is compiled when "_ethers_backend" feature is disabled
@@ -179,7 +181,7 @@ fn get_crypto_backend_impl() -> Box<dyn CryptoBackend> {
                 Box::new(DefaultCryptoBackend::default())
             }
         },
-        _ => Box::new(DefaultCryptoBackend::default()),
+        _ => Box::new(DefaultCryptoBackend),
     }
 }
 
@@ -203,7 +205,7 @@ mod ethers_backend {
         fn sign_message(&self, private_key: &[u8; 32], message: &[u8]) -> Result<Vec<u8>, ClientError> {
             // Create signing key from private key bytes
             let signing_key = SigningKey::from_bytes(private_key.into())
-                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {}", e)))?;
+                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {e}")))?;
             
             // Sign the message
             let signature: Signature = signing_key.sign(message);
@@ -220,7 +222,7 @@ mod ethers_backend {
             
             // Create secret key from private key bytes
             let secret_key = SecretKey::from_bytes(private_key.into())
-                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {}", e)))?;
+                .map_err(|e| ClientError::ClientError(format!("Invalid private key: {e}")))?;
             
             // Get the public key
             let public_key = secret_key.public_key();
@@ -259,6 +261,7 @@ pub fn keccak256(data: &[u8]) -> EvmBytes {
 
 /// Sign a message using a private key
 /// Returns the signature bytes and recovery ID
+#[allow(dead_code)]
 pub fn sign_message(private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, u8), ClientError> {
     // Ensure the backend is initialized
     GLOBAL_INIT.call_once(|| {
@@ -276,6 +279,7 @@ pub fn sign_message(private_key: &[u8; 32], message: &[u8]) -> Result<(Vec<u8>, 
 }
 
 /// Get Ethereum address from private key
+#[allow(dead_code)]
 pub fn get_address_from_private_key(private_key: &[u8; 32]) -> Result<[u8; 20], ClientError> {
     // Ensure the backend is initialized
     GLOBAL_INIT.call_once(|| {

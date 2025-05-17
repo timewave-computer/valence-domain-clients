@@ -55,14 +55,14 @@ pub enum ClientError {
 /// Protocol buffer encode error conversion
 impl From<prost::EncodeError> for ClientError {
     fn from(err: prost::EncodeError) -> Self {
-        ClientError::SerializationError(format!("Protocol buffer encoding error: {}", err))
+        ClientError::SerializationError(format!("Protocol buffer encoding error: {err}"))
     }
 }
 
 /// Protocol buffer decode error conversion
 impl From<prost::DecodeError> for ClientError {
     fn from(err: prost::DecodeError) -> Self {
-        ClientError::SerializationError(format!("Protocol buffer decoding error: {}", err))
+        ClientError::SerializationError(format!("Protocol buffer decoding error: {err}"))
     }
 }
 

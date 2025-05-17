@@ -85,22 +85,22 @@ impl NeutronClient {
     ) -> Result<TransactionResponse, ClientError> {
         // Serialize the message
         let msg_bytes = serde_json::to_vec(msg)
-            .map_err(|e| ClientError::ParseError(format!("Failed to serialize message: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to serialize message: {e}")))?;
             
         // Prepare the CosmWasm execute message
         let execute_msg = cosmrs::cosmwasm::MsgExecuteContract {
             sender: self.get_signer_details().await?.address.0.parse::<cosmrs::AccountId>()?,
             contract: contract_address.parse()?,
-            msg: msg_bytes.into(),
+            msg: msg_bytes,
             funds: funds.into_iter().map(|coin| cosmrs::Coin {
                 denom: coin.denom.parse().unwrap(),
-                amount: coin.amount.into(),
+                amount: coin.amount,
             }).collect(),
         };
         
         // Convert to Any
         let any_msg = execute_msg.to_any()
-            .map_err(|e| ClientError::ClientError(format!("Failed to convert message to Any: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Failed to convert message to Any: {e}")))?;
             
         // Simulate for fee estimation
         let sim_response = self.simulate_tx(any_msg.clone()).await?;
@@ -125,13 +125,13 @@ impl NeutronClient {
     ) -> Result<T, ClientError> {
         // Serialize the query message to JSON
         let query_msg_string = serde_json::to_string(query_msg)
-            .map_err(|e| ClientError::ParseError(format!("Failed to serialize query message: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to serialize query message: {e}")))?;
         
         // Create a tonic client for the CosmWasm query service
         let mut wasm_query_client = cosmos_sdk_proto::cosmwasm::wasm::v1::query_client::QueryClient::connect(
             format!("http://{}", self.grpc_url())
         ).await
-            .map_err(|e| ClientError::ClientError(format!("Failed to connect to Neutron wasm query service: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Failed to connect to Neutron wasm query service: {e}")))?;
         
         // Prepare the query request
         let request = cosmos_sdk_proto::cosmwasm::wasm::v1::QuerySmartContractStateRequest {
@@ -141,11 +141,11 @@ impl NeutronClient {
         
         // Execute the query
         let response = wasm_query_client.smart_contract_state(request).await
-            .map_err(|e| ClientError::ClientError(format!("Failed to query contract state: {}", e)))?;
+            .map_err(|e| ClientError::ClientError(format!("Failed to query contract state: {e}")))?;
         
         // Deserialize the response
         serde_json::from_slice(&response.get_ref().data)
-            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize contract response: {}", e)))
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize contract response: {e}")))
     }
 }
 

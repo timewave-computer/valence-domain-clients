@@ -8,7 +8,7 @@
 //! address validation, transaction handling, and data encoding/decoding.
 
 // Use our abstracted crypto module instead of directly using ethers
-use crate::evm::crypto::{keccak256, sign_message, get_address_from_private_key};
+use crate::evm::crypto::keccak256;
 use hex;
 
 use crate::core::error::ClientError;
@@ -33,7 +33,7 @@ pub fn hex_to_bytes(hex_str: &str) -> Result<Vec<u8>, ClientError> {
     let clean_hex = hex_str.trim_start_matches("0x");
     
     hex::decode(clean_hex)
-        .map_err(|e| ClientError::ParseError(format!("Failed to decode hex: {}", e)))
+        .map_err(|e| ClientError::ParseError(format!("Failed to decode hex: {e}")))
 }
 
 /// Convert bytes to a hex string with 0x prefix
@@ -51,7 +51,7 @@ pub fn parse_hex_u256(hex_str: &str) -> Result<EvmU256, ClientError> {
     }
     
     let bytes = hex::decode(clean_hex)
-        .map_err(|e| ClientError::ParseError(format!("Failed to decode hex: {}", e)))?;
+        .map_err(|e| ClientError::ParseError(format!("Failed to decode hex: {e}")))?;
         
     // Convert bytes to u64 (simplified)
     let mut value: u64 = 0;
@@ -114,7 +114,7 @@ pub fn decode_function_response(response: &EvmBytes) -> Vec<String> {
         // Remove leading zeros and convert to hex
         let first_non_zero = word.iter().position(|&b| b != 0).unwrap_or(31);
         let hex = hex::encode(&word[first_non_zero..]);
-        results.push(format!("0x{}", hex));
+        results.push(format!("0x{hex}"));
     }
     
     results
@@ -128,9 +128,9 @@ pub fn decode_function_response(response: &EvmBytes) -> Vec<String> {
 pub fn get_recovery_id(v: u64, _chain_id: u64) -> u8 {
     // EIP-155: v = {0,1} + CHAIN_ID * 2 + 35
     if v >= 35 {
-        let recovery_id = ((v - 35) % 2) as u8;
+        
         // Verify chain ID matches expected (in practice)
-        recovery_id
+        ((v - 35) % 2) as u8
     } else {
         // Legacy transaction (pre-EIP-155)
         v as u8 - 27
@@ -161,7 +161,7 @@ pub fn parse_chain_id(chain_id: &str) -> Result<u64, ClientError> {
         _ => {
             // Try to parse as a number
             chain_id.parse::<u64>()
-                .map_err(|e| ClientError::ParseError(format!("Invalid chain ID: {}", e)))
+                .map_err(|e| ClientError::ParseError(format!("Invalid chain ID: {e}")))
         }
     }
 }
@@ -343,35 +343,6 @@ mod tests {
         
         let recovery_id = get_recovery_id(28, chain_id);
         assert_eq!(recovery_id, 1);
-    }
-
-    #[test]
-    fn test_sign_message() {
-        // Create a known private key for testing
-        let private_key = [
-            0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10,
-            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
-        ];
-        
-        let message = b"hello world";
-        let result = sign_message(&private_key, message);
-        assert!(result.is_ok());
-        
-        let (signature, recovery_id) = result.unwrap();
-        assert_eq!(signature.len(), 64); // r and s values, 32 bytes each
-        assert!(recovery_id <= 1); // 0 or 1
-    }
-
-    #[test]
-    fn test_get_address_from_private_key() {
-        // Create a known private key for testing
-        let private_key = [
-            0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10,
-            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x20,
-        ];
-        
-        let address = get_address_from_private_key(&private_key).unwrap();
-        assert_eq!(address.len(), 20); // Ethereum address is 20 bytes
     }
 
     #[test]

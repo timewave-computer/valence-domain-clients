@@ -95,7 +95,7 @@ impl EthereumClient {
     
     /// Convert Ethereum client errors to ClientError
     fn handle_flashbots_error(&self, error: reqwest::Error) -> ClientError {
-        ClientError::ClientError(format!("Flashbots request failed: {}", error))
+        ClientError::ClientError(format!("Flashbots request failed: {error}"))
     }
     
     //-----------------------------------------------------------------------------
@@ -124,7 +124,7 @@ impl EthereumClient {
         let hex_string = result.to_hex();
         let hex = hex_string.trim_start_matches("0x");
         let value = u64::from_str_radix(hex, 16)
-            .map_err(|e| ClientError::ParseError(format!("Failed to parse token balance: {}", e)))?;
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse token balance: {e}")))?;
             
         Ok(EvmU256::from_u64(value))
     }
@@ -141,7 +141,7 @@ impl EthereumClient {
         }
         
         // ERC-20 transfer function signature + params
-        let mut data = Vec::from(hex::decode("a9059cbb000000000000000000000000").unwrap());
+        let mut data = hex::decode("a9059cbb000000000000000000000000").unwrap();
         data.extend_from_slice(&to_address.0);
         
         // Pad amount to 32 bytes
@@ -280,7 +280,7 @@ impl FlashbotsBundle for EthereumClient {
         });
         
         // Calculate signature for Flashbots authentication
-        let message = format!("{}", request_body);
+        let message = format!("{request_body}");
         let signature = self.sign_flashbots_request(message.as_bytes())?;
         
         // Send the request to Flashbots relay
@@ -297,7 +297,7 @@ impl FlashbotsBundle for EthereumClient {
             .map_err(|e| self.handle_flashbots_error(e))?;
         
         if let Some(error) = response_json.get("error") {
-            return Err(ClientError::ClientError(format!("Flashbots error: {}", error)));
+            return Err(ClientError::ClientError(format!("Flashbots error: {error}")));
         }
         
         let result = response_json.get("result")
@@ -326,7 +326,7 @@ impl FlashbotsBundle for EthereumClient {
         });
         
         // Calculate signature for Flashbots authentication
-        let message = format!("{}", request_body);
+        let message = format!("{request_body}");
         let signature = self.sign_flashbots_request(message.as_bytes())?;
         
         // Send the request to Flashbots relay
@@ -343,7 +343,7 @@ impl FlashbotsBundle for EthereumClient {
             .map_err(|e| self.handle_flashbots_error(e))?;
         
         if let Some(error) = response_json.get("error") {
-            return Err(ClientError::ClientError(format!("Flashbots error: {}", error)));
+            return Err(ClientError::ClientError(format!("Flashbots error: {error}")));
         }
         
         let result = response_json.get("result")
@@ -372,7 +372,7 @@ impl FlashbotsBundle for EthereumClient {
         });
         
         // Calculate signature for Flashbots authentication
-        let message = format!("{}", request_body);
+        let message = format!("{request_body}");
         let signature = self.sign_flashbots_request(message.as_bytes())?;
         
         // Send the request to Flashbots relay
@@ -389,7 +389,7 @@ impl FlashbotsBundle for EthereumClient {
             .map_err(|e| self.handle_flashbots_error(e))?;
         
         if let Some(error) = response_json.get("error") {
-            return Err(ClientError::ClientError(format!("Flashbots error: {}", error)));
+            return Err(ClientError::ClientError(format!("Flashbots error: {error}")));
         }
         
         let result = response_json.get("result")
@@ -415,12 +415,12 @@ impl FlashbotsBundle for EthereumClient {
 impl From<crate::evm::errors::EvmError> for ClientError {
     fn from(err: crate::evm::errors::EvmError) -> Self {
         match err {
-            crate::evm::errors::EvmError::ConnectionError(msg) => ClientError::ClientError(format!("Connection error: {}", msg)),
+            crate::evm::errors::EvmError::ConnectionError(msg) => ClientError::ClientError(format!("Connection error: {msg}")),
             crate::evm::errors::EvmError::SerializationError(msg) => ClientError::SerializationError(msg),
             crate::evm::errors::EvmError::TransactionError(msg) => ClientError::TransactionError(msg),
-            crate::evm::errors::EvmError::ContractError(msg) => ClientError::ClientError(format!("Contract error: {}", msg)),
-            crate::evm::errors::EvmError::InsufficientBalance(msg) => ClientError::ClientError(format!("Insufficient balance: {}", msg)),
-            crate::evm::errors::EvmError::InvalidParameter(msg) => ClientError::ClientError(format!("Invalid parameter: {}", msg)),
+            crate::evm::errors::EvmError::ContractError(msg) => ClientError::ClientError(format!("Contract error: {msg}")),
+            crate::evm::errors::EvmError::InsufficientBalance(msg) => ClientError::ClientError(format!("Insufficient balance: {msg}")),
+            crate::evm::errors::EvmError::InvalidParameter(msg) => ClientError::ClientError(format!("Invalid parameter: {msg}")),
             crate::evm::errors::EvmError::ClientError(msg) => ClientError::ClientError(msg),
             crate::evm::errors::EvmError::NotImplemented(msg) => ClientError::NotImplemented(msg),
         }
