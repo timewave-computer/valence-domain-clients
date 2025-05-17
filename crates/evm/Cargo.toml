@@ -1,0 +1,59 @@
+[package]
+name = "valence-evm"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Timewave Labs"]
+description = "Ethereum Virtual Machine ecosystem client implementations for Valence Protocol"
+repository = "https://github.com/timewave-computer/valence-domain-clients"
+
+[features]
+# Blockchain specific features
+ethereum = []
+base = []
+
+# Internal features
+_ethers_backend = ["dep:ethers"]
+
+# Default features
+default = ["ethereum", "base", "_ethers_backend"]
+
+[dependencies]
+# Workspace dependencies
+valence-core = { path = "../core", version = "0.1.0" }
+valence-proto = { path = "../proto", version = "0.1.0" }
+
+# Generic imports
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
+log = "0.4.20"
+thiserror = "1.0.50"
+hex = "0.4.3"
+async-trait = "0.1.74"
+tokio = { version = "1.35.1", features = ["full"] }
+funty = "2.0.0"
+chrono = "0.4.26"
+
+# Crypto dependencies for default implementation
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+libsecp256k1 = { version = "0.7.1" }
+
+# EVM-specific imports
+alloy = { version = "0.8.0", features = ["full", "signers", "sol-types"] }
+alloy-contract = { version = "0.8.0" }
+alloy-node-bindings = { version = "0.8.0" }
+alloy-transport-http = { version = "0.8.0" }
+alloy_signer_local = { package = "alloy-signer-local", version = "0.8.0", features = [
+    "mnemonic",
+    "keystore",
+] }
+alloy-signer = "0.8.0"
+
+# For Flashbots support - ethers is conditionally compiled
+ethers = { version = "2.0.10", features = ["eip712", "legacy"], optional = true }
+
+reqwest = { version = "0.11.27", features = ["json"] }
+
+[dev-dependencies]
+mockall = "0.12.1"
+tempfile = "3.8.0" 

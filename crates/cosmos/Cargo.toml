@@ -1,0 +1,53 @@
+[package]
+name = "valence-cosmos"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Timewave Labs"]
+description = "Cosmos ecosystem client implementations for Valence Protocol"
+repository = "https://github.com/timewave-computer/valence-domain-clients"
+
+[features]
+# Chain-specific features
+babylon = []
+noble = []
+gaia = []
+neutron = []
+osmosis = []
+
+# Default features
+default = ["babylon", "noble", "gaia", "neutron", "osmosis"]
+
+[dependencies]
+# Workspace dependencies
+valence-core = { path = "../core", version = "0.1.0" }
+valence-proto = { path = "../proto", version = "0.1.0" }
+
+# Generic imports
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
+log = "0.4.20"
+thiserror = "1.0.50"
+chrono = { version = "0.4.31" }
+url = "2.5.0"
+async-trait = "0.1.74"
+tokio = { version = "1.35.1", features = ["full"] }
+hex = "0.4.3"
+
+# Cosmos-specific imports
+bip32 = { version = "0.4.0", default-features = false, features = ["bip39", "secp256k1"] }
+cosmrs = { version = "0.18.0", default-features = false, features = ["cosmwasm", "rpc", "grpc"] }
+cosmos-sdk-proto = { version = "=0.23.0", default-features = false, features = ["grpc-transport", "cosmwasm", "grpc"] }
+bech32 = "0.9.1"
+ibc-proto = { version = "=0.36.0", default-features = false, features = ["client"] }
+neutron-std = "5.1.2"
+prost = "0.13.5"
+prost-types = "0.13.5"
+alloy = { version = "0.8.0", features = ["full", "signers", "sol-types"] }
+
+# gRPC stack
+tonic = { version = "0.12.1", default-features = false, features = ["transport", "codegen", "tls-webpki-roots"] }
+
+[dev-dependencies]
+mockall = "0.12.1"
+tempfile = "3.8.0" 

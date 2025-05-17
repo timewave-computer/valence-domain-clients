@@ -5,8 +5,7 @@
 use std::env;
 
 use valence_domain_clients::{
-    cosmos::chains::noble::NobleClient,
-    cosmos::grpc_client::GrpcSigningClient,
+    cosmos::chains::noble::NobleClient, cosmos::grpc_client::GrpcSigningClient,
     CosmosBaseClient,
 };
 
@@ -16,7 +15,7 @@ fn test_noble_client_implements_traits() {
     // These functions would fail to compile if NobleClient doesn't implement the traits
     fn assert_implements_cosmos_base_client<T: CosmosBaseClient>() {}
     fn assert_implements_grpc_signing_client<T: GrpcSigningClient>() {}
-    
+
     // These will fail at compile time if NobleClient doesn't implement the traits
     assert_implements_cosmos_base_client::<NobleClient>();
     assert_implements_grpc_signing_client::<NobleClient>();
@@ -31,24 +30,26 @@ async fn test_noble_client_connection() {
         println!("Skipping Noble connection test - NOBLE_TEST_MNEMONIC not set");
         return;
     }
-    
+
     // Get connection parameters from environment variables or use defaults
     let grpc_url = env::var("NOBLE_GRPC_URL")
         .unwrap_or_else(|_| "https://noble-grpc.polkachu.com:14990".to_string());
-        
-    let chain_id = env::var("NOBLE_CHAIN_ID")
-        .unwrap_or_else(|_| "noble-1".to_string());
-    
+
+    let chain_id =
+        env::var("NOBLE_CHAIN_ID").unwrap_or_else(|_| "noble-1".to_string());
+
     let mnemonic = env::var("NOBLE_TEST_MNEMONIC").unwrap();
-    
+
     // Create a Noble client with the specified parameters
     let noble_client = NobleClient::new(
-        &grpc_url,
-        &chain_id,
-        &mnemonic,
-        None // Using default derivation path
-    ).await;
-    
+        &grpc_url, &chain_id, &mnemonic, None, // Using default derivation path
+    )
+    .await;
+
     // Verify client creation was successful
-    assert!(noble_client.is_ok(), "Failed to create Noble client: {:?}", noble_client.err());
+    assert!(
+        noble_client.is_ok(),
+        "Failed to create Noble client: {:?}",
+        noble_client.err()
+    );
 }

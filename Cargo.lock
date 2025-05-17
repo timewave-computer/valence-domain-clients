@@ -1615,6 +1615,7 @@ dependencies = [
  "prost 0.12.6",
  "prost-types 0.12.6",
  "tendermint-proto 0.34.1",
+ "tonic 0.10.2",
 ]
 
 [[package]]
@@ -6438,6 +6439,33 @@ dependencies = [
 
 [[package]]
 name = "tonic"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d560933a0de61cf715926b9cac824d4c883c2c43142f787595e48280c40a1d0e"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "axum 0.6.20",
+ "base64 0.21.7",
+ "bytes",
+ "h2 0.3.26",
+ "http 0.2.12",
+ "http-body 0.4.6",
+ "hyper 0.14.32",
+ "hyper-timeout 0.4.1",
+ "percent-encoding",
+ "pin-project",
+ "prost 0.12.6",
+ "tokio",
+ "tokio-stream",
+ "tower 0.4.13",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
+name = "tonic"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877c5b330756d856ffcc4553ab34a5684481ade925ecc54bcd1bf02b1d0d4d52"
@@ -6711,7 +6739,83 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
 
 [[package]]
+name = "valence-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cosmos-sdk-proto 0.23.0",
+ "hex",
+ "log",
+ "mockall",
+ "prost 0.13.5",
+ "prost-types 0.13.5",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "valence-proto",
+]
+
+[[package]]
+name = "valence-cosmos"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "async-trait",
+ "bech32 0.9.1",
+ "bip32",
+ "chrono",
+ "cosmos-sdk-proto 0.23.0",
+ "cosmrs",
+ "hex",
+ "ibc-proto",
+ "log",
+ "mockall",
+ "neutron-std",
+ "prost 0.13.5",
+ "prost-types 0.13.5",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tonic 0.12.3",
+ "url",
+ "valence-core",
+ "valence-proto",
+]
+
+[[package]]
 name = "valence-domain-clients"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "cosmos-sdk-proto 0.20.0",
+ "hex",
+ "mockall",
+ "once_cell",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tonic-build",
+ "valence-core",
+ "valence-cosmos",
+ "valence-evm",
+ "valence-proto",
+]
+
+[[package]]
+name = "valence-domain-clients-examples"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "tokio",
+ "valence-domain-clients",
+]
+
+[[package]]
+name = "valence-evm"
 version = "0.1.0"
 dependencies = [
  "alloy",
@@ -6721,24 +6825,13 @@ dependencies = [
  "alloy-signer-local",
  "alloy-transport-http",
  "async-trait",
- "bech32 0.9.1",
- "bip32",
  "chrono",
- "cosmos-sdk-proto 0.23.0",
- "cosmrs",
  "ethers",
  "funty",
  "hex",
- "ibc-proto",
  "libsecp256k1",
  "log",
  "mockall",
- "neutron-std",
- "once_cell",
- "prost 0.13.5",
- "prost-derive 0.13.5",
- "prost-types 0.13.5",
- "rand 0.8.5",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
@@ -6746,9 +6839,21 @@ dependencies = [
  "thiserror 1.0.69",
  "tiny-keccak",
  "tokio",
+ "valence-core",
+ "valence-proto",
+]
+
+[[package]]
+name = "valence-proto"
+version = "0.1.0"
+dependencies = [
+ "prost 0.13.5",
+ "prost-derive 0.13.5",
+ "prost-types 0.13.5",
+ "serde",
+ "thiserror 1.0.69",
  "tonic 0.12.3",
  "tonic-build",
- "url",
 ]
 
 [[package]]

@@ -1,109 +1,105 @@
 # Valence Domain Clients
 
-Client implementations for interacting with Valence Protocol domains across multiple blockchain ecosystems.
+A Rust workspace containing clients for various blockchain domains, supporting both Cosmos and EVM ecosystems.
 
-## Project Structure
+## Workspace Structure
 
-The project is organized into the following main directories:
+The workspace is organized into the following crates:
 
-- `crates/` - Main source code for the client libraries
-  - `core/` - Core types, errors, and utilities shared by all clients
-  - `cosmos/` - Cosmos ecosystem client implementations
-  - `evm/` - Ethereum Virtual Machine ecosystem client implementations 
-  - `proto/` - Protocol buffer definitions and utilities
+- **valence-core**: Core types and utilities shared across all domain clients
+- **valence-cosmos**: Clients for Cosmos-based blockchains
+- **valence-evm**: Clients for Ethereum and other EVM-compatible blockchains
+- **valence-proto**: Protocol buffer definitions and utilities
+- **valence-domain-clients**: The main package that re-exports functionality from the domain-specific crates
 
-- `tests/` - Test files for the client implementations
-  - `cosmos/` - Tests for Cosmos clients
-  - `evm/` - Tests for EVM clients
-  - `integration/` - Cross-chain integration tests
-  - `proto/` - Tests for protocol buffer utilities
+## Dependency Isolation
 
-## Features
+The `valence-proto` crate abstracts away specific dependency versions like `prost` from consumers. This is achieved through:
 
-The library supports the following features:
+- Custom traits (`ProtoEncodable` and `ProtoDecodable`) that provide a stable interface
+- Hiding implementation details behind these traits
+- Preventing dependency conflicts when projects use different versions of the same libraries
 
-- **Cosmos ecosystem**:
-  - Noble
-  - Osmosis
-  - Gaia (Cosmos Hub)
-  - Neutron
-  - Babylon
+This design ensures that applications consuming this library won't have dependency conflicts, even if they use different versions of the underlying libraries.
 
-- **EVM ecosystem**:
-  - Ethereum
-  - Base
+## Crate Descriptions
 
-## Building
+### valence-core
 
-This project uses Nix for reproducible builds. To build the project:
+Contains core functionality shared by all domain clients:
+- Error types
+- Transaction types
+- Common traits
+- Utility functions
+
+### valence-cosmos
+
+Contains clients for Cosmos-based blockchains:
+- Cosmos SDK client base functionality
+- Chain-specific clients (Gaia, Osmosis, Noble, Neutron, Babylon)
+- GRPC and signing client implementations
+- Utilities for working with Cosmos transactions
+
+### valence-evm
+
+Contains clients for EVM-compatible blockchains:
+- Ethereum client implementations
+- Base EVM client functionality
+- Flashbots bundle support
+- Utilities for working with EVM transactions
+
+### valence-proto
+
+Contains protocol buffer definitions:
+- Generated Rust code from proto files
+- Utilities for encoding/decoding proto messages
+- Dependency shielding through abstraction traits
+
+## Development
+
+### Requirements
+
+This project uses Nix to manage dependencies. Make sure you have Nix installed and enable flakes.
+
+### Building
 
 ```bash
-# Enter the Nix development shell
+# Enter the development environment
 nix develop
 
-# Build the project
+# Build all crates
 cargo build
+```
 
-# Run tests
+### Testing
+
+```bash
+# Run tests for all crates
 cargo test
 ```
 
-## Testing Strategy
+## Usage Examples
 
-The project employs several levels of testing:
+Several examples are provided in the `examples/` directory:
 
-### Unit Tests
+- **osmosis_dex.rs**: Demonstrates interacting with the Osmosis DEX
+- **noble_example.rs**: Shows how to work with the Noble blockchain
+- **flashbots_bundle.rs**: Example of creating and submitting Flashbots bundles
+- **base_example.rs**: Basic interactions with Base (an EVM-compatible L2)
+- **cross_chain_transfer.rs**: Example of cross-chain asset transfers
 
-Unit tests are embedded within the source files and focus on testing individual components in isolation. These can be run with:
-
-```bash
-cargo test --lib
-```
-
-### Integration Tests with Mocks
-
-These tests use mock implementations of blockchain clients to test the interaction logic without connecting to real networks:
+To run an example:
 
 ```bash
-cargo test --test integration::blockchain_mocks
+cargo run --example osmosis_dex
 ```
 
-### Real Network Tests
+## Features
 
-Tests that connect to actual blockchain networks. These are skipped by default unless specific environment variables are set:
-
-```bash
-# To run real network tests
-RUN_NETWORK_TESTS=1 cargo test --test integration::network_tests
-
-# To also run tests that perform actual transfers
-RUN_NETWORK_TESTS=1 RUN_TRANSFER_TESTS=1 cargo test --test integration::network_tests
-
-# To run IBC cross-chain tests
-RUN_NETWORK_TESTS=1 RUN_IBC_TESTS=1 cargo test --test integration::network_tests
-```
-
-For the real network tests, you need to set additional environment variables:
-
-```bash
-# Cosmos chain testing
-export NOBLE_TEST_MNEMONIC="your test mnemonic"
-export OSMOSIS_TEST_MNEMONIC="your test mnemonic"
-export NOBLE_TEST_RECIPIENT="optional recipient address"
-
-# EVM chain testing
-export ETH_TEST_PRIVATE_KEY="your test private key without 0x prefix"
-export ETH_TEST_RPC_URL="optional custom RPC URL"
-```
-
-## Coverage
-
-Generate code coverage reports using cargo-tarpaulin:
-
-```bash
-nix develop -c cargo tarpaulin --skip-clean -p valence-domain-clients --lib
-```
-
-## License
-
-This project is licensed under the Apache License, Version 2.0.
+- Full support for Cosmos-based blockchains
+- EVM blockchain support (Ethereum, Base, Optimism, etc.)
+- Flashbots bundle integration
+- Type-safe transaction building
+- Comprehensive error handling
+- Protocol buffer dependency isolation
+- Cross-chain interactions

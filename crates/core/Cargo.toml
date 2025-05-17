@@ -1,0 +1,28 @@
+[package]
+name = "valence-core"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Timewave Labs"]
+description = "Core types and utilities for Valence Domain Clients"
+repository = "https://github.com/timewave-computer/valence-domain-clients"
+
+[dependencies]
+# Workspace dependencies
+valence-proto = { path = "../proto", version = "0.1.0" }
+
+# Generic dependencies
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
+log = "0.4.20"
+thiserror = "1.0.50"
+chrono = { version = "0.4.31" }
+hex = "0.4.3"
+
+# Protocol buffer dependencies
+prost = "0.13.5"
+prost-types = "0.13.5"
+cosmos-sdk-proto = { version = "=0.23.0", default-features = false, features = ["grpc-transport", "cosmwasm", "grpc"] }
+
+[dev-dependencies]
+mockall = "0.12.1" 

@@ -6,8 +6,8 @@ use std::env;
 
 use valence_domain_clients::core::error::ClientError;
 use valence_domain_clients::cosmos::chains::BabylonClient;
-use valence_domain_clients::CosmosBaseClient;
 use valence_domain_clients::cosmos::grpc_client::GrpcSigningClient;
+use valence_domain_clients::CosmosBaseClient;
 
 /// Create a Babylon client for testing.
 ///
@@ -16,13 +16,13 @@ use valence_domain_clients::cosmos::grpc_client::GrpcSigningClient;
 async fn create_test_client() -> Result<BabylonClient, ClientError> {
     let grpc_url = env::var("BABYLON_GRPC_URL")
         .unwrap_or_else(|_| "http://localhost:9090".to_string());
-    
-    let chain_id = env::var("BABYLON_CHAIN_ID")
-        .unwrap_or_else(|_| "bbn-test-1".to_string());
-    
+
+    let chain_id =
+        env::var("BABYLON_CHAIN_ID").unwrap_or_else(|_| "bbn-test-1".to_string());
+
     let mnemonic = env::var("BABYLON_MNEMONIC")
         .expect("BABYLON_MNEMONIC must be set for tests");
-    
+
     BabylonClient::new(&grpc_url, &chain_id, &mnemonic, None).await
 }
 
@@ -33,7 +33,7 @@ async fn test_babylon_connection() {
         println!("Skipping Babylon connection test (BABYLON_MNEMONIC not set)");
         return;
     }
-    
+
     let client = create_test_client().await;
     assert!(client.is_ok(), "Failed to create Babylon client");
 }
@@ -45,22 +45,25 @@ async fn test_babylon_query_balance() {
         println!("Skipping Babylon balance test (BABYLON_MNEMONIC not set)");
         return;
     }
-    
+
     let client = create_test_client().await.expect("Failed to create client");
-    let signer = client.get_signer_details().await.expect("Failed to get signer details");
-    
+    let signer = client
+        .get_signer_details()
+        .await
+        .expect("Failed to get signer details");
+
     // Convert GenericAddress to &str for query methods
     let address_str = signer.address.to_string();
     let balance = client.query_balance(&address_str, "ubbn").await;
     assert!(balance.is_ok());
     let balance_value = balance.as_ref().unwrap();
     assert!(*balance_value > 0);
-    
+
     // Convert GenericAddress to &str for BTC tap balance queries
     let btc_tap_balance = client.query_btc_tap_balance(&address_str).await;
     assert!(btc_tap_balance.is_ok());
     let tap_balance = btc_tap_balance.unwrap();
-    
+
     println!("Babylon native token balance: {} ubbn", *balance_value);
     println!("Babylon BTC-TAP balance: {} ubtc_tap", tap_balance);
 }
@@ -72,11 +75,15 @@ async fn test_babylon_latest_block() {
         println!("Skipping Babylon block test (BABYLON_MNEMONIC not set)");
         return;
     }
-    
+
     let client = create_test_client().await.expect("Failed to create client");
-    
+
     // Query latest block
     let block = client.latest_block_header().await;
-    assert!(block.is_ok(), "Failed to query latest block: {:?}", block.err());
+    assert!(
+        block.is_ok(),
+        "Failed to query latest block: {:?}",
+        block.err()
+    );
     println!("Babylon latest block height: {}", block.unwrap().height);
 }

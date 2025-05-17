@@ -7,85 +7,42 @@ version    = "0.1.0"
 repository = "https://github.com/timewave-computer/valence-domain-clients"
 description = "Client implementations for interacting with Valence Protocol domains"
 
+[workspace]
+members = [
+    "crates/core",
+    "crates/evm",
+    "crates/cosmos",
+    "crates/proto",
+    "examples",
+    "."
+]
+resolver = "2"
+
 [features]
-# Core features
-core = []         # Core types, errors, and utilities
-proto = []        # Protocol buffer definitions and utilities
-test-utils = []   # Testing utilities
-
-# Blockchain ecosystem features
-evm = []          # Ethereum Virtual Machine ecosystem
-cosmos = []       # Cosmos ecosystem
-
-# Chain-specific features
 # EVM chains
-ethereum = ["evm"]
-base = ["evm"]
+ethereum = ["valence-evm/ethereum"]
+base = ["valence-evm/base"]
 
 # Cosmos chains
-babylon = ["cosmos"]
-noble = ["cosmos"]
-gaia = ["cosmos"]
-neutron = ["cosmos"]
-osmosis = ["cosmos"]
-
-# Internal features - not exposed to users
-_ethers_backend = ["dep:ethers"]  # Internal feature to conditionally compile ethers
+babylon = ["valence-cosmos/babylon"]
+noble = ["valence-cosmos/noble"]
+gaia = ["valence-cosmos/gaia"]
+neutron = ["valence-cosmos/neutron"]
+osmosis = ["valence-cosmos/osmosis"]
 
 # Default features set - all functionality available
-default = ["core", "proto", "evm", "cosmos", "ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble", "_ethers_backend"]
+default = ["ethereum", "base", "babylon", "gaia", "neutron", "osmosis", "noble"]
 
 [dependencies]
-# Internal crates - removed valence-domain-protos dependency
+# Internal workspace crates
+valence-core = { path = "crates/core", version = "0.1.0" }
+valence-evm = { path = "crates/evm", version = "0.1.0" }
+valence-cosmos = { path = "crates/cosmos", version = "0.1.0" }
+valence-proto = { path = "crates/proto", version = "0.1.0" }
 
-# generic imports
-tokio       = { version = "1.35.1", features = ["full"] }
+# Re-export dependencies needed for the main crate
+tokio = { version = "1.35.1", features = ["full"] }
 async-trait = "0.1.74"
-serde              = { version = "1.0.193", features = ["derive"] }
-serde_json         = "1.0.108"
-log                = "0.4.20"
-thiserror          = "1.0.50"
-chrono             = { version = "0.4.31" }
-url                = "2.5.0"
-
-# Crypto dependencies for default implementation (no dependency conflicts)
-tiny-keccak        = { version = "2.0.2", features = ["keccak"] }
-libsecp256k1       = { version = "0.7.1" }
-
-# cosmos-specific imports
-bip32                   = { version = "0.4.0", default-features = false, features = ["bip39", "secp256k1"] } # cosmrs 0.18.0 uses 0.4
-cosmrs                  = { version = "0.18.0", default-features = false, features = ["cosmwasm", "rpc", "grpc"] }
-cosmos-sdk-proto        = { version = "=0.23.0", default-features = false, features = ["grpc-transport", "cosmwasm", "grpc"] }
-bech32                  = "0.9.1"
-ibc-proto               = { version = "=0.36.0", default-features = false, features = ["client"] } # Compatible with tendermint 0.33/0.34 (cosmrs 0.18 uses tm 0.33, ibc-proto 0.36 uses tm 0.34)
-
-# Aligned versions for gRPC stack
-prost                   = "0.13.5" # Force single version for all dependencies
-prost-types             = "0.13.5" # Match prost
-prost-derive            = "0.13.5" # Match prost
-tonic                   = { version = "0.12.1", default-features = false, features = ["transport", "codegen", "tls-webpki-roots"] }
-
-# Force all crates to use consistent dependency versions
-
-hex                     = "0.4.3"
-neutron-std             = "5.1.2"   # Might need adjustment if cosmwasm versions change significantly
-funty                   = "2.0.0"
-
-# evm-specific imports
-alloy = { version = "0.8.0", features = ["full", "signers", "sol-types"] }
-alloy-contract         = { version = "0.8.0" }
-alloy-node-bindings    = { version = "0.8.0" }
-alloy-transport-http   = { version = "0.8.0" }
-alloy_signer_local     = { package = "alloy-signer-local", version = "0.8.0", features = [
-    "mnemonic",
-    "keystore",
-] }
-alloy-signer = "0.8.0"
-
-# For Flashbots support - ethers is conditionally compiled
-ethers = { version = "2.0.10", features = ["eip712", "legacy"], optional = true }
-
-reqwest = { version = "0.11.27", features = ["json"] }
 
 [dev-dependencies]
 mockall = "0.12.1"
@@ -93,17 +50,13 @@ once_cell = "1.19.0"
 rand = "0.8.5"
 hex = "0.4.3"
 tempfile = "3.8.0"
-# valence-e2e = { git = "https://github.com/timewave-computer/valence-protocol" }
-
-[workspace]
-members = ["."]
-resolver = "2" # Dependency resolver to handle conflicting versions
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+cosmos-sdk-proto = "0.20.0"
 
 [lib]
 name = "valence_domain_clients"
-path = "crates/lib.rs"
+path = "src/lib.rs"
 
 [build-dependencies]
 tonic-build = { version = "0.12.1", default-features = false, features = ["prost", "transport"] }
-
-# We're using proto-compat feature instead of patching

@@ -14,8 +14,5 @@ pub mod integration;
 // EVM blockchain tests
 pub mod evm;
 
-// Temporary directory for tests being fixed
-pub mod temp;
-
 // Protocol buffer tests
-pub mod proto; 
+pub mod proto;

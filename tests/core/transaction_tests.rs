@@ -4,7 +4,7 @@
 
 //! Tests for the core transaction module
 
-use valence_domain_clients::core::transaction::{TransactionResponse, Event};
+use valence_domain_clients::core::transaction::{Event, TransactionResponse};
 
 #[test]
 fn test_transaction_response_creation() {
@@ -22,7 +22,7 @@ fn test_transaction_response_creation() {
         block_hash: None,
         original_request_payload: None,
     };
-    
+
     // Verify basic properties
     assert_eq!(tx.tx_hash, "0xABCDEF1234567890");
     assert_eq!(tx.height, 12345);
@@ -68,7 +68,7 @@ fn test_transaction_response_with_events() {
         block_hash: None,
         original_request_payload: None,
     };
-    
+
     // Verify properties
     assert_eq!(tx.tx_hash, "0x123456789abcdef");
     assert_eq!(tx.height, 123456);
@@ -105,26 +105,30 @@ fn test_event_creation_and_access() {
             ("receiver".to_string(), "0xReceiver".to_string()),
         ],
     };
-    
+
     // Verify event properties
     assert_eq!(event.event_type, "token_transfer");
     assert_eq!(event.attributes.len(), 4);
-    
+
     // Test attribute access
     assert_eq!(event.attributes[0].0, "token");
     assert_eq!(event.attributes[0].1, "USDC");
     assert_eq!(event.attributes[1].0, "amount");
     assert_eq!(event.attributes[1].1, "5000000");
-    
+
     // Test finding attributes by key
-    let amount = event.attributes.iter()
+    let amount = event
+        .attributes
+        .iter()
         .find(|(k, _)| k == "amount")
         .map(|(_, v)| v)
         .unwrap();
     assert_eq!(amount, "5000000");
-    
+
     // Test attribute not found
-    let not_found = event.attributes.iter()
+    let not_found = event
+        .attributes
+        .iter()
         .find(|(k, _)| k == "nonexistent")
         .map(|(_, v)| v);
     assert_eq!(not_found, None);
@@ -138,14 +142,10 @@ fn test_transaction_response_debug_and_clone() {
         height: 1000,
         gas_used: Some(21000),
         gas_wanted: Some(30000),
-        events: vec![
-            Event {
-                event_type: "test_event".to_string(),
-                attributes: vec![
-                    ("test_key".to_string(), "test_value".to_string()),
-                ],
-            },
-        ],
+        events: vec![Event {
+            event_type: "test_event".to_string(),
+            attributes: vec![("test_key".to_string(), "test_value".to_string())],
+        }],
         code: None,
         raw_log: None,
         data: None,
@@ -153,13 +153,13 @@ fn test_transaction_response_debug_and_clone() {
         block_hash: None,
         original_request_payload: None,
     };
-    
+
     // Test Debug implementation
     let debug_str = format!("{:?}", tx);
     assert!(debug_str.contains("0xHASH"));
     assert!(debug_str.contains("1000"));
     assert!(debug_str.contains("21000"));
-    
+
     // Test Clone implementation
     let tx_clone = tx.clone();
     assert_eq!(tx.tx_hash, tx_clone.tx_hash);
@@ -167,7 +167,10 @@ fn test_transaction_response_debug_and_clone() {
     assert_eq!(tx.gas_used, tx_clone.gas_used);
     assert_eq!(tx.events.len(), tx_clone.events.len());
     assert_eq!(tx.events[0].event_type, tx_clone.events[0].event_type);
-    assert_eq!(tx.events[0].attributes.len(), tx_clone.events[0].attributes.len());
+    assert_eq!(
+        tx.events[0].attributes.len(),
+        tx_clone.events[0].attributes.len()
+    );
 }
 
 #[test]
@@ -186,7 +189,7 @@ fn test_transaction_response_with_all_fields() {
         block_hash: None,
         original_request_payload: None,
     };
-    
+
     // Verify properties
     assert_eq!(tx.tx_hash, "0x123456789abcdef");
     assert_eq!(tx.height, 123456);
@@ -229,7 +232,10 @@ fn test_transaction_response_clone() {
     assert_eq!(tx.code, tx_clone.code);
     assert_eq!(tx.timestamp, tx_clone.timestamp);
     assert_eq!(tx.block_hash, tx_clone.block_hash);
-    assert_eq!(tx.original_request_payload, tx_clone.original_request_payload);
+    assert_eq!(
+        tx.original_request_payload,
+        tx_clone.original_request_payload
+    );
 }
 
 #[test]
@@ -263,16 +269,16 @@ fn test_event_attributes() {
     assert_eq!(tx.events.len(), 1);
     assert_eq!(tx.events[0].event_type, "transfer");
     assert_eq!(tx.events[0].attributes.len(), 3);
-    
+
     // Check that we can access attributes by index
     let attribute0 = &tx.events[0].attributes[0];
     assert_eq!(attribute0.0, "sender");
     assert_eq!(attribute0.1, "addr1");
-    
+
     let attribute1 = &tx.events[0].attributes[1];
     assert_eq!(attribute1.0, "recipient");
     assert_eq!(attribute1.1, "addr2");
-    
+
     let attribute2 = &tx.events[0].attributes[2];
     assert_eq!(attribute2.0, "amount");
     assert_eq!(attribute2.1, "100");

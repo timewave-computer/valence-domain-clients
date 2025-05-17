@@ -27,8 +27,8 @@ mod cosmos {
     // mod neutron_tests; // Temporarily disabled - moved to tests/temp
     // Noble chain tests
     mod noble_tests; // Fixed and working now
-    // Osmosis chain tests
-    // mod osmosis_tests; // Temporarily disabled - moved to tests/temp
+                     // Osmosis chain tests
+                     // mod osmosis_tests; // Temporarily disabled - moved to tests/temp
 }
 
 // EVM chain tests

@@ -1,0 +1,29 @@
+[package]
+name = "valence-domain-clients-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[example]]
+name = "base_example"
+path = "base_example.rs"
+
+[[example]]
+name = "flashbots_bundle"
+path = "flashbots_bundle.rs"
+
+[[example]]
+name = "noble_example"
+path = "noble_example.rs"
+
+[[example]]
+name = "osmosis_dex"
+path = "osmosis_dex.rs"
+
+[[example]]
+name = "cross_chain_transfer"
+path = "cross_chain_transfer.rs"
+
+[dependencies]
+valence-domain-clients = { path = ".." }
+tokio = { version = "1.28.0", features = ["full"] }
+hex = "0.4.3" 
