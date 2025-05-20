@@ -33,8 +33,7 @@ url = "2.5.0"
 async-trait = "0.1.74"
 tokio = { version = "1.35.1", features = ["full"] }
 hex = "0.4.3"
-borsh = "0.10.4"
-borsh-derive = "0.10.4"
+borsh = { version = "0.10.4", features = ["derive", "std", "rc"] }
 
 # Cosmos-specific imports
 bip32 = { version = "0.4.0", default-features = false, features = ["bip39", "secp256k1"] }
