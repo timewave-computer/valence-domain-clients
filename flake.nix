@@ -40,8 +40,8 @@
 
         crate2nixPkg = pkgs.callPackage crate2nix {};
 
-        # Use pinned nightly Rust version to avoid ABI mismatches
-        rustToolchain = pkgs.rust-bin.nightly."2025-05-13".default.override {
+        # Use a stable Rust version instead of nightly to avoid potential toolchain issues
+        rustToolchain = pkgs.rust-bin.stable."1.78.0".default.override {
           extensions = [
             "rust-src" # cargo and rustc are implicitly included by .default
             "clippy"
@@ -163,14 +163,14 @@
               # Just print environment information without attempting to build
               # This helps debug the Nix environment but avoids build errors
               echo "Setting up Nix environment..."
-              echo "Rust version: $(rustup run nightly rustc --version)"
+              echo "Rust version: $(rustup run stable rustc --version)"
               echo "OpenSSL linked: $OPENSSL_DIR"
               echo "PROTOC location: $(which protoc 2>/dev/null || echo 'protoc not found')"
               
               # Create a minimal workspace using cargo metadata to verify the environment
               # This doesn't actually compile the code but checks that the toolchain is working
               echo "Checking cargo metadata..." 
-              rustup run nightly cargo -Znext-lockfile-bump metadata 2>/dev/null || echo "Cargo metadata had issues but continuing"
+              rustup run stable cargo metadata 2>/dev/null || echo "Cargo metadata had issues but continuing"
               
               # Skip actually building since there are code-level errors to fix
               echo "Skipping compilation - environment is ready for development"
