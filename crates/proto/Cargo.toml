@@ -1,0 +1,22 @@
+[package]
+name = "valence-proto"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Timewave Labs"]
+description = "Protocol buffer definitions for Valence Domain Clients"
+repository = "https://github.com/timewave-computer/valence-domain-clients"
+
+[dependencies]
+# Core dependencies
+serde = { version = "1.0.193", features = ["derive"] }
+thiserror = "1.0.50"
+
+# Protocol buffer dependencies
+prost = "0.13.5"
+prost-types = "0.13.5"
+prost-derive = "0.13.5"
+tonic = { version = "0.12.1", default-features = false, features = ["transport", "codegen", "tls-webpki-roots"] }
+
+[build-dependencies]
+tonic-build = { version = "0.12.1", default-features = false, features = ["prost", "transport"] } 

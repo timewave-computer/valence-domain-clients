@@ -8,11 +8,31 @@ docs/
 # Nix related
 .cargo/
 .rustup
+.direnv/
+.envrc
+.env
+.pre-commit-config.yaml
 
-# Proto files: ignore generated proto files except our hand-written stub implementations
+# Proto files: ignore generated proto files but keep our stubs
 src/proto/**/*.proto
-proto/
+proto/**/*
+!proto/README.md
+
+# Generated third-party proto dependencies
+third_party/**/*
+!third_party/README.md
+
+# Generated config files
+src/config/**/*
+!src/config/README.md
+
+# Make sure all README files are tracked
+!**/README.md
 
 # System files
 .DS_Store
 .cursor
+
+# Temporary directories
+.tmp/
+tmp/

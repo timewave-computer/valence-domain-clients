@@ -1,0 +1,23 @@
+[package]
+name = "valence-coprocessor-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Timewave Labs"]
+description = "A client library for interacting with the Valence coprocessor service"
+repository = "https://github.com/timewave-computer/valence-domain-clients"
+
+[dependencies]
+anyhow = "1.0.83"
+base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
+reqwest = { version = "0.12.15", features = ["blocking", "json"] }
+serde = { version = "1.0.195", features = ["derive"] }
+serde_json = "1.0.140"
+thiserror = "1.0.58"
+url = "2.5.0"
+# These would typically be dependencies on the actual coprocessor libraries
+# valence-coprocessor = { git = "https://github.com/timewave-computer/valence-coprocessor.git", tag = "v0.1.9" }
+# valence-coprocessor-wasm = { git = "https://github.com/timewave-computer/valence-coprocessor.git", tag = "v0.1.9" }
+
+[dev-dependencies]
+tokio = { version = "1.35.1", features = ["rt", "macros"] }
+tempfile = "3.8.0" 

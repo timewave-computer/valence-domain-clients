@@ -1,0 +1,18 @@
+//-----------------------------------------------------------------------------
+// Test Modules
+//-----------------------------------------------------------------------------
+
+// Cosmos tests
+pub mod cosmos;
+
+// Core functionality tests
+pub mod core;
+
+// Integration tests for full workflows
+pub mod integration;
+
+// EVM blockchain tests
+pub mod evm;
+
+// Protocol buffer tests
+pub mod proto;
