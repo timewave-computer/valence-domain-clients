@@ -65,8 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let target_block = current_block + 1;
 
     println!(
-        "Current block: {}, targeting block: {}",
-        current_block, target_block
+        "Current block: {current_block}, targeting block: {target_block}"
     );
 
     // In a real scenario, you would have your own signed transactions to include
@@ -80,42 +79,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //-----------------------------------------------------------------------------
     println!("\nCreating a basic Flashbots bundle...");
 
-    // Create a basic bundle targeting the next block
-    let basic_bundle =
-        create_eth_bundle(vec![placeholder_tx.to_string()], target_block, None);
+    // Create a bundle for the next block
+    let current_block_for_bundle = eth_client.get_block_number().await?;
+    let target_block_for_bundle = current_block_for_bundle + 1;
+    println!(
+        "Current block for bundle: {current_block_for_bundle}, targeting block: {target_block_for_bundle}"
+    );
 
-    println!("Bundle created for block: 0x{:x}", target_block);
+    // Create EthSendBundleParams
+    let eth_bundle_params = create_eth_bundle(
+        vec![placeholder_tx.to_string()], // Transactions to include
+        target_block_for_bundle,          // Target block number
+        None,                             // No specific reverting_tx_hashes
+    );
 
-    // Simulate the bundle execution before sending
-    println!("Simulating bundle execution...");
+    println!("EthSendBundleParams created for block: 0x{target_block_for_bundle:x}");
 
-    match eth_client.simulate_bundle(basic_bundle.clone()).await {
-        Ok(simulation_results) => {
+    // Simulate the bundle
+    match eth_client.simulate_bundle(eth_bundle_params.clone()).await { // Clone params for simulation
+        Ok(simulation_result_map) => {
             println!("Simulation successful!");
-            println!(
-                "Coinbase payment: {:?}",
-                simulation_results.get("coinbaseDiff")
-            );
-            println!("Gas used: {:?}", simulation_results.get("gasUsed"));
+            // Log the entire simulation result for inspection
+            println!("Simulation result: {simulation_result_map:?}");
+            // Example: Check for a specific key if you know what to expect
+            if let Some(first_tx_sim) = simulation_result_map.get("some_expected_key_for_first_tx_hash_or_status") {
+                println!("First transaction simulation details: {first_tx_sim:?}");
+            } else {
+                println!("Relevant simulation details not found directly, inspect the map above.");
+            }
         }
-        Err(e) => {
-            println!("Simulation failed: {}", e);
-            println!("This is expected with our placeholder transaction.");
-        }
+        Err(e) => println!("Simulation failed: {e}"),
     }
 
-    // Send the bundle to Flashbots
-    println!("Sending bundle to Flashbots...");
-
-    match eth_client.send_eth_bundle(basic_bundle).await {
-        Ok(response) => {
-            println!("Bundle submitted successfully!");
-            println!("Bundle hash: {}", response.bundle_hash);
+    // Submit the bundle
+    match eth_client.send_eth_bundle(eth_bundle_params).await { // Use original params for sending
+        Ok(submitted_bundle_response) => {
+            println!("Bundle submitted successfully: bundle_hash = {}", submitted_bundle_response.bundle_hash);
         }
-        Err(e) => {
-            println!("Bundle submission failed: {}", e);
-            println!("This is expected with our placeholder transaction.");
-        }
+        Err(e) => println!("Bundle submission failed: {e}"),
     }
 
     //-----------------------------------------------------------------------------
@@ -171,7 +172,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Bundle hash: {}", response.bundle_hash);
         }
         Err(e) => {
-            println!("MEV-Share bundle submission failed: {}", e);
+            println!("MEV-Share bundle submission failed: {e}");
             println!("This is expected with our placeholder transaction.");
         }
     }

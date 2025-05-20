@@ -19,13 +19,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("Network explorer URL: {}", client.explorer_url());
 
-    // Get the latest block number
+    // Get latest block number
     let block_number = client.get_block_number().await?;
-    println!("Latest block number: {}", block_number);
+    println!("Latest block number: {block_number}");
 
-    // Get the chain ID from the network
+    // Get chain ID
     let chain_id = client.get_chain_id().await?;
-    println!("Chain ID from RPC: {}", chain_id);
+    println!("Chain ID from RPC: {chain_id}");
 
     // Get the current gas price
     let gas_price = client.get_gas_price().await?;

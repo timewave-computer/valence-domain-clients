@@ -2,7 +2,9 @@
 
 use std::env;
 use valence_domain_clients::{
-    cosmos::chains::noble::NobleClient, CosmosBaseClient, GrpcSigningClient,
+    core::types::GenericAddress,
+    cosmos::chains::noble::NobleClient,
+    CosmosBaseClient, GrpcSigningClient,
 };
 
 #[tokio::main]
@@ -33,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Query account information
     //-----------------------------------------------------------------------------
     let signer = noble_client.get_signer_details().await?.address;
-    println!("Connected to Noble as address: {}", signer);
+    println!("Connected to Noble as address: {signer}");
 
     // Query USDC balance
     let balance = noble_client.query_balance(&signer.0, "uusdc").await?;
@@ -48,12 +50,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //-----------------------------------------------------------------------------
 
     // Transfer tokens to another Noble address
-    let to_address = "noble1qu8ak5zl9nxvfaqvj7fvzcg5xl96g6wlmspkq9"; // Example address
-    println!("\nTransferring 0.1 USDC to {}...", to_address);
+    let to_address_str = "noble1z00n20q5g9z90pqz02g0000000000000000000"; // Replace with actual address
+    let to_address = GenericAddress::from(to_address_str.to_string());
+    println!("\nTransferring 0.1 USDC to {to_address}...");
 
     let transfer_result = noble_client
         .transfer(
-            to_address,
+            &to_address.0, // Pass as &str
             100000, // 0.1 USDC (6 decimals)
             "uusdc",
             Some("Example transfer from Valence client"),
@@ -62,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match transfer_result {
         Ok(result) => println!("Transfer successful - TX hash: {}", result.tx_hash),
-        Err(e) => println!("Transfer failed: {}", e),
+        Err(e) => println!("Transfer failed: {e}"),
     }
 
     //-----------------------------------------------------------------------------
@@ -72,21 +75,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Destination chain information
     let destination_domain = 1; // Ethereum Mainnet = 1, Arbitrum = 3, Avalanche = 6, etc.
-    let destination_address = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"; // Example ETH recipient
-
-    // Amount to transfer
-    let transfer_amount = "500000"; // 0.5 USDC
+    let destination_address_str = "0xRecipientAddressOnDestinationChain"; // Replace
+    let destination_address = GenericAddress::from(destination_address_str.to_string());
     println!(
-        "\nInitiating CCTP transfer of 0.5 USDC to {} on domain {}...",
-        destination_address, destination_domain
+        "\nInitiating CCTP transfer of 0.5 USDC to {destination_address} on domain {destination_domain}..."
     );
 
     // Execute the deposit for burn
     let cctp_result = noble_client
         .cctp_deposit_for_burn(
             destination_domain,
-            destination_address,
-            transfer_amount,
+            &destination_address.0, // Pass as &str
+            "500000", // 0.5 USDC
             "uusdc",
         )
         .await;
@@ -107,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "2. The message and attestation are submitted to the destination chain"
             );
         }
-        Err(e) => println!("CCTP transfer failed: {}", e),
+        Err(e) => println!("CCTP transfer failed: {e}"),
     }
 
     //-----------------------------------------------------------------------------
@@ -123,8 +123,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // In a real application, you would get these from an indexer or API
     // For this example, we're showing the usage pattern only
-    let _dummy_message = vec![0u8; 32]; // Placeholder for an actual message
-    let _dummy_attestation = vec![0u8; 32]; // Placeholder for an actual attestation
+    println!("\nAttempting to replace a CCTP message (placeholders used)...");
+    let _dummy_message = [0u8; 32]; // Placeholder for an actual message
+    let _dummy_attestation = [0u8; 32]; // Placeholder for an actual attestation
 
     println!("\nTo complete a CCTP transfer to Noble, you would use:");
     println!("client.cctp_receive_message(message_bytes, attestation_bytes)");

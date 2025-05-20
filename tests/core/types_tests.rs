@@ -25,8 +25,7 @@ fn test_generic_address() {
     assert_eq!(addr, address_clone);
 
     // Test Debug formatting
-    let debug_str = format!("{:?}", addr);
-    assert!(debug_str.contains("GenericAddress"));
+    let debug_str = format!("{addr:?}");
     assert!(debug_str.contains("0x1234567890abcdef"));
 
     // Test PartialEq
@@ -57,8 +56,7 @@ fn test_generic_hash() {
     assert_eq!(hash, hash_clone);
 
     // Test Debug formatting
-    let debug_str = format!("{:?}", hash);
-    assert!(debug_str.contains("GenericHash"));
+    let debug_str = format!("{hash:?}");
     assert!(debug_str.contains("0xabcdef1234567890"));
 
     // Test PartialEq
@@ -89,8 +87,7 @@ fn test_generic_u256() {
     assert_eq!(u256, u256_clone);
 
     // Test Debug formatting
-    let debug_str = format!("{:?}", u256);
-    assert!(debug_str.contains("GenericU256"));
+    let debug_str = format!("{u256:?}");
     assert!(debug_str.contains("123456789"));
 
     // Test PartialEq

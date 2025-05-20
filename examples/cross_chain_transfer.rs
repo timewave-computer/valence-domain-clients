@@ -49,8 +49,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Ethereum amount parameters - using new type constructor format
     let eth_amount = EvmU256([0, 0, 0, 10000000000000000]); // 0.01 ETH
     let eth_recipient = EvmAddress([
-        0x74, 0x2d, 0x35, 0xCc, 0x66, 0x34, 0xC0, 0x53, 0x29, 0x25, 0xa3, 0xb8,
-        0x44, 0xBc, 0x45, 0x4e, 0x44, 0x38, 0xf4, 0x4e,
+        0x74, 0x2d, 0x35, 0xcc, 0x66, 0x34, 0xc0, 0x53, 0x29, 0x25, 0xa3, 0xb8,
+        0x44, 0xbc, 0x45, 0x4e, 0x44, 0x38, 0xf4, 0x4e,
     ]);
 
     // Noble amount parameters
@@ -82,8 +82,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Query Noble USDC balance
     let noble_sender = noble.get_signer_details().await?.address.0;
-    let noble_balance = noble.query_balance(&noble_sender, "uusdc").await?;
-    println!("Noble USDC balance: {} uusdc", noble_balance);
+    let noble_usdc_denom = "uusdc";
+    let noble_balance = noble.query_balance(&noble_sender, noble_usdc_denom).await?;
+    println!("Noble USDC balance: {noble_balance} uusdc");
 
     //-----------------------------------------------------------------------------
     // Execute parallel transfers

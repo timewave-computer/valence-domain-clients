@@ -155,7 +155,7 @@ fn test_transaction_response_debug_and_clone() {
     };
 
     // Test Debug implementation
-    let debug_str = format!("{:?}", tx);
+    let debug_str = format!("{tx:?}");
     assert!(debug_str.contains("0xHASH"));
     assert!(debug_str.contains("1000"));
     assert!(debug_str.contains("21000"));

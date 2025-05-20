@@ -9,7 +9,9 @@
 mod tests {
     #[test]
     fn dummy_test() {
-        // This is a placeholder test to satisfy the compiler
-        assert!(true);
+        // This is a placeholder test to ensure the module compiles.
+        // TODO: Add actual tests for GrpcClientPool and related functionalities.
+        let x = 1 + 1;
+        assert_eq!(x, 2);
     }
 }

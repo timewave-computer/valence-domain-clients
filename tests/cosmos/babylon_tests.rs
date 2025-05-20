@@ -65,7 +65,7 @@ async fn test_babylon_query_balance() {
     let tap_balance = btc_tap_balance.unwrap();
 
     println!("Babylon native token balance: {} ubbn", *balance_value);
-    println!("Babylon BTC-TAP balance: {} ubtc_tap", tap_balance);
+    println!("Babylon BTC-TAP balance: {tap_balance} ubtc_tap");
 }
 
 #[tokio::test]

@@ -7,9 +7,17 @@ use std::env;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use valence_domain_clients::core::error::ClientError;
-use valence_domain_clients::cosmos::chains::NeutronClient;
+use valence_domain_clients::cosmos::chains::neutron::NeutronClient;
 use valence_domain_clients::cosmos::grpc_client::GrpcSigningClient;
 use valence_domain_clients::CosmosBaseClient;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct EmptyObject {}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ContractInfoQuery {
+    contract_info: EmptyObject,
+}
 
 /// Create a Neutron client for testing.
 ///
@@ -83,37 +91,23 @@ async fn test_neutron_latest_block() {
 
 #[tokio::test]
 #[ignore] // Requires a connection to a Neutron node and contract address
-async fn test_neutron_contract_query() {
+async fn test_neutron_contract_query() -> Result<(), ClientError> {
     if env::var("NEUTRON_MNEMONIC").is_err()
         || env::var("NEUTRON_TEST_CONTRACT").is_err()
     {
         println!("Skipping Neutron contract test (required env vars not set)");
-        return;
+        return Ok(());
     }
 
     let client = create_test_client().await.expect("Failed to create client");
     let contract_address = env::var("NEUTRON_TEST_CONTRACT")
         .expect("NEUTRON_TEST_CONTRACT must be set");
 
-    // Simple query to get contract info
-    #[derive(Serialize, Deserialize)]
-    struct ContractInfoQuery {
-        contract_info: EmptyObject,
-    }
+    let query = ContractInfoQuery { contract_info: EmptyObject {} };
 
-    #[derive(Serialize, Deserialize)]
-    struct EmptyObject {}
+    let result: serde_json::Value = client.query_contract(&contract_address, &query).await?;
+    println!("Contract info: {result:?}");
+    assert!(!result.is_null());
 
-    let query = ContractInfoQuery {
-        contract_info: EmptyObject {},
-    };
-
-    // This is a simple query that most CosmWasm contracts should support
-    let result: serde_json::Value = client
-        .query_contract(&contract_address, &query)
-        .await
-        .expect("Failed to query contract");
-
-    println!("Contract info: {:?}", result);
-    assert!(!result.is_null(), "Contract query returned null");
+    Ok(())
 }

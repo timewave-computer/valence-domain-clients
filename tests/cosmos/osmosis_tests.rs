@@ -219,8 +219,8 @@ async fn test_integration_osmosis_balance() {
         .await
         .expect("Failed to query balance");
 
-    println!("Osmosis balance: {} uosmo", balance);
+    println!("Osmosis balance: {balance} uosmo");
 
     // Simple assertion to verify query works
-    assert!(balance > 0, "Balance query returned unexpected value");
+    assert!(balance > 0, "Balance should be greater than 0");
 }

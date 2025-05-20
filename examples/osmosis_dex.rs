@@ -31,23 +31,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize Osmosis client
     let osmosis = OsmosisClient::new(grpc_url, chain_id, mnemonic, None).await?;
 
-    // Get our address
+    // Get and print the signer's address
     let address = osmosis.get_signer_details().await?.address.0;
-    println!("Signer address: {}", address);
+    println!("Signer address: {address}");
 
-    //-----------------------------------------------------------------------------
-    // Balance queries
-    //-----------------------------------------------------------------------------
-
-    // Query OSMO balance
+    // Get and print OSMO balance
     let osmo_balance = osmosis.query_balance(&address, "uosmo").await?;
-    println!("OSMO balance: {} uosmo", osmo_balance);
+    println!("OSMO balance: {osmo_balance} uosmo");
 
-    // Query ATOM balance (if any)
+    // Get and print ATOM balance (using the IBC denom for ATOM on Osmosis)
     let atom_denom =
         "ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2";
     let atom_balance = osmosis.query_balance(&address, atom_denom).await?;
-    println!("ATOM balance: {} {}", atom_balance, atom_denom);
+    println!("ATOM balance: {atom_balance} {atom_denom}");
 
     //-----------------------------------------------------------------------------
     // Token swap example
@@ -75,10 +71,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     let new_atom_balance =
                         osmosis.query_balance(&address, atom_denom).await?;
 
-                    println!("New OSMO balance: {} uosmo", new_osmo_balance);
+                    println!("New OSMO balance: {new_osmo_balance} uosmo");
                     println!(
-                        "New ATOM balance: {} {}",
-                        new_atom_balance, atom_denom
+                        "New ATOM balance: {new_atom_balance} {atom_denom}"
                     );
 
                     Ok(())
@@ -87,7 +82,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             };
 
         if let Err(e) = swap_result {
-            println!("Swap failed: {}", e);
+            println!("Swap failed: {e}");
         }
     } else {
         println!("Not enough OSMO balance to perform swap example");
@@ -105,9 +100,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // For this example, we'll use a fictional pool ID 1
     let pool_id = 1;
 
-    // Check if we have enough balance for liquidity provision
-    if osmo_balance >= 5_000_000 && atom_balance >= 1_000_000 {
-        println!("Adding liquidity to pool {}...", pool_id);
+    // Ensure you have enough of both tokens before attempting to add liquidity
+    if osmo_balance > 1_000_000 && atom_balance > 100_000 {
+        println!("Adding liquidity to pool {pool_id}...");
 
         // Create the tokens array for liquidity provision
         let tokens = vec![
@@ -124,25 +119,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // Add liquidity to the pool
         match add_liquidity(&osmosis, pool_id, tokens).await {
             Ok(tx) => {
-                println!(
-                    "Liquidity addition successful! Transaction hash: {}",
-                    tx.tx_hash
-                );
-                println!("Waiting for confirmation...");
+                println!("Liquidity added successfully!");
+                println!("Transaction hash: {}", tx.tx_hash);
 
-                // In a real app, you would poll for confirmation here
-                // For now, we'll just wait a few seconds
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-
-                // Query the new balances
-                let new_osmo_balance =
-                    osmosis.query_balance(&address, "uosmo").await?;
-                println!("New OSMO balance: {} uosmo", new_osmo_balance);
+                // Query and print new balances
+                let new_osmo_balance = osmosis.query_balance(&address, "uosmo").await?;
+                println!("New OSMO balance: {new_osmo_balance} uosmo");
             }
-            Err(e) => println!("Liquidity addition failed: {}", e),
+            Err(e) => println!("Liquidity addition failed: {e}"),
         }
     } else {
-        println!("Not enough balance to perform liquidity provision example");
+        println!("Skipping liquidity addition due to insufficient balance.");
     }
 
     println!("Osmosis DEX examples completed!");

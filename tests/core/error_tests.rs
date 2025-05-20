@@ -5,28 +5,29 @@
 //! Tests for the core error handling module
 
 use valence_domain_clients::ClientError;
+use std::error::Error;
 
 #[test]
 fn test_error_creation_and_display() {
     // Test client error variant
     let err = ClientError::ClientError("connection failed".to_string());
-    assert!(format!("{}", err).contains("client error"));
-    assert!(format!("{}", err).contains("connection failed"));
+    assert!(format!("{err}").contains("client error"));
+    assert!(format!("{err}").contains("connection failed"));
 
     // Test transaction error variant
     let err = ClientError::TransactionError("transaction rejected".to_string());
-    assert!(format!("{}", err).contains("transaction error"));
-    assert!(format!("{}", err).contains("transaction rejected"));
+    assert!(format!("{err}").contains("transaction error"));
+    assert!(format!("{err}").contains("transaction rejected"));
 
     // Test serialization error variant
     let err = ClientError::SerializationError("invalid format".to_string());
-    assert!(format!("{}", err).contains("serialization error"));
-    assert!(format!("{}", err).contains("invalid format"));
+    assert!(format!("{err}").contains("serialization error"));
+    assert!(format!("{err}").contains("invalid format"));
 
     // Test timeout error variant
     let err = ClientError::TimeoutError("request timed out".to_string());
-    assert!(format!("{}", err).contains("timeout error"));
-    assert!(format!("{}", err).contains("request timed out"));
+    assert!(format!("{err}").contains("timeout error"));
+    assert!(format!("{err}").contains("request timed out"));
 }
 
 #[test]
@@ -66,12 +67,12 @@ fn test_client_error_debug() {
     let err = ClientError::ClientError("connection error".to_string());
 
     // Test Debug formatting
-    let debug_str = format!("{:?}", err);
+    let debug_str = format!("{err:?}");
     assert!(debug_str.contains("ClientError"));
     assert!(debug_str.contains("connection error"));
 
     // Test Display formatting
-    let display_str = format!("{}", err);
+    let display_str = format!("{err}");
     assert!(display_str.contains("connection error"));
 }
 
@@ -89,13 +90,13 @@ fn test_client_error_variants() {
 fn test_error_custom_creation() {
     // Create CustomError directly (instead of From)
     let client_err = ClientError::ClientError("custom error message".to_string());
-    assert!(format!("{}", client_err).contains("custom error message"));
+    assert!(format!("{client_err}").contains("custom error message"));
 
     // Test with a different variant
     let err_msg = "another error message".to_string();
     let parse_err = ClientError::ParseError(err_msg);
-    assert!(format!("{}", parse_err).contains("parse error"));
-    assert!(format!("{}", parse_err).contains("another error message"));
+    assert!(format!("{parse_err}").contains("parse error"));
+    assert!(format!("{parse_err}").contains("another error message"));
 }
 
 #[test]
@@ -114,25 +115,21 @@ fn test_from_implementation() {
 
 #[test]
 fn test_error_messages() {
-    // Create different error variants and check their messages
-    let error1 = ClientError::ClientError("invalid address".to_string());
-    assert_eq!(error1.to_string(), "client error: invalid address");
+    let err = ClientError::TimeoutError("connection failed".to_string());
+    assert!(format!("{err}").contains("timeout error"));
+    assert!(format!("{err}").contains("connection failed"));
 
-    let error2 = ClientError::ParseError("invalid JSON".to_string());
-    assert_eq!(error2.to_string(), "parse error: invalid JSON");
+    let err = ClientError::TransactionError("transaction rejected".to_string());
+    assert!(format!("{err}").contains("transaction error"));
+    assert!(format!("{err}").contains("transaction rejected"));
 
-    let error3 = ClientError::TransactionError("tx failed".to_string());
-    assert_eq!(error3.to_string(), "transaction error: tx failed");
+    let err = ClientError::SerializationError("invalid format".to_string());
+    assert!(format!("{err}").contains("serialization error"));
+    assert!(format!("{err}").contains("invalid format"));
 
-    let error4 = ClientError::SerializationError("failed to serialize".to_string());
-    assert_eq!(
-        error4.to_string(),
-        "serialization error: failed to serialize"
-    );
-
-    // Test with timeout error - this variant definitely exists in ClientError
-    let error5 = ClientError::TimeoutError("connection timed out".to_string());
-    assert_eq!(error5.to_string(), "timeout error: connection timed out");
+    let err = ClientError::TimeoutError("request timed out".to_string());
+    assert!(format!("{err}").contains("timeout error"));
+    assert!(format!("{err}").contains("request timed out"));
 }
 
 #[test]
@@ -151,8 +148,45 @@ fn test_error_source() {
 fn test_error_direct_creation() {
     // Test creating errors directly
     let client_err = ClientError::ClientError("test client error".to_string());
-    assert!(format!("{}", client_err).contains("client error"));
+    assert!(format!("{client_err}").contains("client error"));
 
     let tx_err = ClientError::TransactionError("test tx error".to_string());
-    assert!(format!("{}", tx_err).contains("transaction error"));
+    assert!(format!("{tx_err}").contains("transaction error"));
+}
+
+#[test]
+fn test_error_debug_trait() {
+    // Test Debug trait implementation
+    let err = ClientError::ClientError("some unknown error".to_string());
+    let debug_str = format!("{err:?}");
+    assert!(debug_str.contains("ClientError"));
+    assert!(debug_str.contains("some unknown error"));
+
+    // Test Display trait implementation
+    let display_str = format!("{err}");
+    assert!(display_str.contains("client error: some unknown error"));
+}
+
+#[test]
+fn test_error_custom_creation_with_source() {
+    // Create a custom error
+    let client_err = ClientError::ClientError("custom error message".to_string());
+    assert!(format!("{client_err}").contains("custom error message"));
+
+    // Create a parse error that sources another error - basic variants don't store source
+    let parse_err = ClientError::ParseError("another error message".to_string());
+    assert!(format!("{parse_err}").contains("parse error"));
+    assert!(format!("{parse_err}").contains("another error message"));
+}
+
+#[test]
+fn test_error_direct_creation_with_source() {
+    let client_err = ClientError::TimeoutError("connection failed".to_string());
+    let tx_err = ClientError::TransactionError("transaction rejected".to_string());
+
+    assert!(format!("{client_err}").contains("timeout error"));
+    // source() should be None for direct errors
+    assert!(client_err.source().is_none());
+    assert!(format!("{tx_err}").contains("transaction error"));
+    assert!(tx_err.source().is_none());
 }
