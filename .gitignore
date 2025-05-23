@@ -1,18 +1,8 @@
 # Build artifacts
 target/
 result/
-result
-work/
-docs/
-
-# Nix related
 .cargo/
 .rustup
 
-# Proto files: ignore generated proto files except our hand-written stub implementations
-src/proto/**/*.proto
-proto/
-
 # System files
 .DS_Store
-.cursor
