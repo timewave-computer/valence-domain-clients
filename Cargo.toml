@@ -24,6 +24,12 @@ resolver = "2"
 ethereum = ["valence-evm/ethereum"]
 base = ["valence-evm/base"]
 
+# EVM tracing features
+erigon-tracing = ["valence-evm/erigon-tracing"]
+
+# EVM consensus features
+lodestar-consensus = ["valence-evm/lodestar-consensus"]
+
 # Cosmos chains
 babylon = ["valence-cosmos/babylon"]
 noble = ["valence-cosmos/noble"]
@@ -60,6 +66,7 @@ serde_json = "1.0"
 cosmos-sdk-proto = "0.20.0"
 anyhow = "1.0.83"
 clap = { version = "4.4.8", features = ["derive"] }
+env_logger = "0.11.0"
 
 [lib]
 name = "valence_domain_clients"
@@ -71,3 +78,11 @@ tonic-build = { version = "0.12.1", default-features = false, features = ["prost
 [[example]]
 name = "coprocessor_client"
 path = "examples/coprocessor_client.rs"
+
+[[example]]
+name = "erigon_tracing_example"
+path = "examples/erigon_tracing_example.rs"
+
+[[example]]
+name = "lodestar_consensus_example"
+path = "examples/lodestar_consensus_example.rs"

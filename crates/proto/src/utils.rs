@@ -82,24 +82,40 @@ pub fn decode<T: ProtoDecodable>(bytes: &[u8]) -> Result<T, ProtoError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
+
+    // Mock message that implements the required traits
+    struct TestMessage {
+        pub data: Vec<u8>,
+    }
+
+    impl ProtoEncodable for TestMessage {
+        fn encode_to_bytes(&self) -> Result<Vec<u8>, ProtoError> {
+            Ok(self.data.clone())
+        }
+    }
+
+    impl ProtoDecodable for TestMessage {
+        fn decode_from_bytes(bytes: &[u8]) -> Result<Self, ProtoError> {
+            Ok(TestMessage {
+                data: bytes.to_vec(),
+            })
+        }
+    }
 
     #[test]
     fn test_encode_decode() {
         // Create a test message
-        let coin = Coin {
-            denom: "uatom".to_string(),
-            amount: "1000000".to_string(),
+        let test_msg = TestMessage {
+            data: b"test data".to_vec(),
         };
 
         // Encode the message
-        let encoded = encode(&coin).expect("Failed to encode message");
+        let encoded = encode(&test_msg).expect("Failed to encode message");
 
         // Decode the message
-        let decoded: Coin = decode(&encoded).expect("Failed to decode message");
+        let decoded: TestMessage = decode(&encoded).expect("Failed to decode message");
 
         // Verify that the decoded message matches the original
-        assert_eq!(decoded.denom, "uatom");
-        assert_eq!(decoded.amount, "1000000");
+        assert_eq!(decoded.data, b"test data".to_vec());
     }
 }

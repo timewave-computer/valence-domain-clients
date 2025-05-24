@@ -54,6 +54,23 @@ pub use valence_evm::base_client::EvmBaseClient;
 // Flashbots bundle functionality
 pub use valence_evm::bundle::{FlashbotsBundle, FlashbotsBundleOperations};
 
+// Erigon tracing functionality
+#[cfg(feature = "erigon-tracing")]
+pub use valence_evm::tracing::ErigonTracing;
+#[cfg(feature = "erigon-tracing")]
+pub use valence_evm::{BlockTrace, CallTraceRequest, TraceFilter, TraceType, TransactionTrace};
+
+// Lodestar consensus functionality
+#[cfg(feature = "lodestar-consensus")]
+pub use valence_evm::consensus::LodestarConsensus;
+#[cfg(feature = "lodestar-consensus")]
+pub use valence_evm::{
+    Attestation, AttesterDuty, BeaconBlock, BeaconBlockHeader, BlsPublicKey, BlsSignature,
+    Committee, Epoch, FinalityCheckpoints, Fork, GenesisData, NodeIdentity, NodePeer, NodeVersion,
+    ProposerDuty, Root, Slot, SyncDuty, SyncingStatus, Validator, ValidatorBalance, ValidatorIndex,
+    ValidatorStatus,
+};
+
 // Client implementations for EVM chains
 #[cfg(feature = "base")]
 pub use valence_evm::chains::base::{BaseClient, BaseNetwork};

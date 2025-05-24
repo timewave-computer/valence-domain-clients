@@ -27,9 +27,18 @@ path = "cross_chain_transfer.rs"
 name = "coprocessor_client"
 path = "coprocessor_client.rs"
 
+[[example]]
+name = "erigon_tracing_example"
+path = "erigon_tracing_example.rs"
+
+[[example]]
+name = "lodestar_consensus_example"
+path = "lodestar_consensus_example.rs"
+
 [dependencies]
 valence-domain-clients = { path = ".." }
 tokio = { version = "1.28.0", features = ["full"] }
 hex = "0.4.3"
 clap = { version = "4.4.8", features = ["derive"] }
-valence-coprocessor-client = { path = "../crates/coprocessor" } 
+valence-coprocessor-client = { path = "../crates/coprocessor" }
+env_logger = "0.11.0" 

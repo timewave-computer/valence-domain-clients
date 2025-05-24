@@ -12,6 +12,12 @@ repository = "https://github.com/timewave-computer/valence-domain-clients"
 ethereum = []
 base = []
 
+# Erigon tracing API support
+erigon-tracing = []
+
+# Lodestar consensus client API support
+lodestar-consensus = []
+
 # Internal features
 _ethers_backend = ["dep:ethers"]
 

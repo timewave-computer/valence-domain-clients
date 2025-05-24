@@ -490,6 +490,263 @@ impl FlashbotsBundleOperations for EthereumClient {
 }
 
 //-----------------------------------------------------------------------------
+// Erigon Tracing Implementation for EthereumClient
+//-----------------------------------------------------------------------------
+
+#[cfg(feature = "erigon-tracing")]
+use crate::tracing::ErigonTracing;
+#[cfg(feature = "erigon-tracing")]
+use crate::types::{
+    BlockTrace, CallTraceRequest, TraceFilter, TraceType, TransactionTrace,
+};
+
+#[cfg(feature = "erigon-tracing")]
+#[async_trait]
+impl ErigonTracing for EthereumClient {
+    async fn trace_transaction(
+        &self,
+        tx_hash: &EvmHash,
+        trace_types: Vec<TraceType>,
+    ) -> Result<TransactionTrace, ClientError> {
+        self.inner.trace_transaction(tx_hash, trace_types).await
+    }
+
+    async fn trace_block(
+        &self,
+        block_number: u64,
+        trace_types: Vec<TraceType>,
+    ) -> Result<BlockTrace, ClientError> {
+        self.inner.trace_block(block_number, trace_types).await
+    }
+
+    async fn trace_filter(
+        &self,
+        filter: &TraceFilter,
+    ) -> Result<Vec<TransactionTrace>, ClientError> {
+        self.inner.trace_filter(filter).await
+    }
+
+    async fn trace_call(
+        &self,
+        call_request: &CallTraceRequest,
+        trace_types: Vec<TraceType>,
+        block_number: Option<u64>,
+    ) -> Result<TransactionTrace, ClientError> {
+        self.inner
+            .trace_call(call_request, trace_types, block_number)
+            .await
+    }
+
+    async fn trace_call_many(
+        &self,
+        call_requests: &[CallTraceRequest],
+        trace_types: Vec<TraceType>,
+        block_number: Option<u64>,
+    ) -> Result<Vec<TransactionTrace>, ClientError> {
+        self.inner
+            .trace_call_many(call_requests, trace_types, block_number)
+            .await
+    }
+
+    async fn trace_raw_transaction(
+        &self,
+        raw_tx: &[u8],
+        trace_types: Vec<TraceType>,
+        block_number: Option<u64>,
+    ) -> Result<TransactionTrace, ClientError> {
+        self.inner
+            .trace_raw_transaction(raw_tx, trace_types, block_number)
+            .await
+    }
+
+    async fn trace_replay_block_transactions(
+        &self,
+        block_number: u64,
+        trace_types: Vec<TraceType>,
+    ) -> Result<Vec<TransactionTrace>, ClientError> {
+        self.inner
+            .trace_replay_block_transactions(block_number, trace_types)
+            .await
+    }
+
+    async fn trace_replay_transaction(
+        &self,
+        tx_hash: &EvmHash,
+        trace_types: Vec<TraceType>,
+    ) -> Result<TransactionTrace, ClientError> {
+        self.inner
+            .trace_replay_transaction(tx_hash, trace_types)
+            .await
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Lodestar Consensus Implementation for EthereumClient
+//-----------------------------------------------------------------------------
+
+#[cfg(feature = "lodestar-consensus")]
+use crate::consensus::{
+    AttesterDuty, LodestarConsensus, NodePeer, NodeVersion, ProposerDuty, SyncDuty,
+};
+#[cfg(feature = "lodestar-consensus")]
+use crate::types::{
+    Attestation, BeaconBlock, BeaconBlockHeader, Committee, Epoch, FinalityCheckpoints, Fork,
+    GenesisData, NodeIdentity, Root, Slot, SyncingStatus, Validator, ValidatorBalance,
+    ValidatorIndex, ValidatorStatus,
+};
+
+#[cfg(feature = "lodestar-consensus")]
+#[async_trait]
+impl LodestarConsensus for EthereumClient {
+    async fn get_genesis(&self) -> Result<GenesisData, ClientError> {
+        self.inner.get_genesis().await
+    }
+
+    async fn get_state_root(&self, state_id: &str) -> Result<Root, ClientError> {
+        self.inner.get_state_root(state_id).await
+    }
+
+    async fn get_state_fork(&self, state_id: &str) -> Result<Fork, ClientError> {
+        self.inner.get_state_fork(state_id).await
+    }
+
+    async fn get_state_finality_checkpoints(
+        &self,
+        state_id: &str,
+    ) -> Result<FinalityCheckpoints, ClientError> {
+        self.inner.get_state_finality_checkpoints(state_id).await
+    }
+
+    async fn get_beacon_block(&self, block_id: &str) -> Result<BeaconBlock, ClientError> {
+        self.inner.get_beacon_block(block_id).await
+    }
+
+    async fn get_beacon_block_header(
+        &self,
+        block_id: &str,
+    ) -> Result<BeaconBlockHeader, ClientError> {
+        self.inner.get_beacon_block_header(block_id).await
+    }
+
+    async fn get_beacon_block_headers(
+        &self,
+        slot: Option<Slot>,
+        parent_root: Option<&Root>,
+    ) -> Result<Vec<BeaconBlockHeader>, ClientError> {
+        self.inner.get_beacon_block_headers(slot, parent_root).await
+    }
+
+    async fn get_block_root(&self, block_id: &str) -> Result<Root, ClientError> {
+        self.inner.get_block_root(block_id).await
+    }
+
+    async fn get_block_attestations(
+        &self,
+        block_id: &str,
+    ) -> Result<Vec<Attestation>, ClientError> {
+        self.inner.get_block_attestations(block_id).await
+    }
+
+    async fn get_pending_attestations(
+        &self,
+        slot: Option<Slot>,
+        committee_index: Option<u64>,
+    ) -> Result<Vec<Attestation>, ClientError> {
+        self.inner.get_pending_attestations(slot, committee_index).await
+    }
+
+    async fn submit_attestations(
+        &self,
+        attestations: &[Attestation],
+    ) -> Result<(), ClientError> {
+        self.inner.submit_attestations(attestations).await
+    }
+
+    async fn submit_block(&self, block: &BeaconBlock) -> Result<(), ClientError> {
+        self.inner.submit_block(block).await
+    }
+
+    async fn get_validator(
+        &self,
+        state_id: &str,
+        validator_id: &str,
+    ) -> Result<Validator, ClientError> {
+        self.inner.get_validator(state_id, validator_id).await
+    }
+
+    async fn get_validators(
+        &self,
+        state_id: &str,
+        validator_ids: &[String],
+        status_filter: Option<&[ValidatorStatus]>,
+    ) -> Result<Vec<Validator>, ClientError> {
+        self.inner.get_validators(state_id, validator_ids, status_filter).await
+    }
+
+    async fn get_validator_balances(
+        &self,
+        state_id: &str,
+        validator_ids: &[String],
+    ) -> Result<Vec<ValidatorBalance>, ClientError> {
+        self.inner.get_validator_balances(state_id, validator_ids).await
+    }
+
+    async fn get_epoch_committees(
+        &self,
+        state_id: &str,
+        epoch: Option<Epoch>,
+        index: Option<u64>,
+        slot: Option<Slot>,
+    ) -> Result<Vec<Committee>, ClientError> {
+        self.inner.get_epoch_committees(state_id, epoch, index, slot).await
+    }
+
+    async fn get_attester_duties(
+        &self,
+        epoch: Epoch,
+        validator_indices: &[ValidatorIndex],
+    ) -> Result<Vec<AttesterDuty>, ClientError> {
+        self.inner.get_attester_duties(epoch, validator_indices).await
+    }
+
+    async fn get_proposer_duties(&self, epoch: Epoch) -> Result<Vec<ProposerDuty>, ClientError> {
+        self.inner.get_proposer_duties(epoch).await
+    }
+
+    async fn get_sync_duties(
+        &self,
+        epoch: Epoch,
+        validator_indices: &[ValidatorIndex],
+    ) -> Result<Vec<SyncDuty>, ClientError> {
+        self.inner.get_sync_duties(epoch, validator_indices).await
+    }
+
+    async fn get_node_identity(&self) -> Result<NodeIdentity, ClientError> {
+        self.inner.get_node_identity().await
+    }
+
+    async fn get_node_peers(&self) -> Result<Vec<NodePeer>, ClientError> {
+        self.inner.get_node_peers().await
+    }
+
+    async fn get_sync_status(&self) -> Result<SyncingStatus, ClientError> {
+        self.inner.get_sync_status().await
+    }
+
+    async fn get_node_version(&self) -> Result<NodeVersion, ClientError> {
+        self.inner.get_node_version().await
+    }
+
+    async fn get_debug_beacon_state(&self, state_id: &str) -> Result<serde_json::Value, ClientError> {
+        self.inner.get_debug_beacon_state(state_id).await
+    }
+
+    async fn get_debug_beacon_heads(&self) -> Result<Vec<BeaconBlockHeader>, ClientError> {
+        self.inner.get_debug_beacon_heads().await
+    }
+}
+
+//-----------------------------------------------------------------------------
 // Error Conversion
 //-----------------------------------------------------------------------------
 

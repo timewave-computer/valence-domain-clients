@@ -31,6 +31,14 @@ pub mod generic_client;
 // Type definitions
 pub mod types;
 
+// Erigon tracing API support
+#[cfg(feature = "erigon-tracing")]
+pub mod tracing;
+
+// Lodestar consensus client API support
+#[cfg(feature = "lodestar-consensus")]
+pub mod consensus;
+
 // Utility functions
 pub mod utils;
 
@@ -39,3 +47,26 @@ pub use base_client::EvmBaseClient;
 pub use bundle::{FlashbotsBundle, FlashbotsBundleOperations};
 pub use generic_client::{EvmClientConfig, GenericEvmClient};
 pub use types::{EvmAddress, EvmBytes, EvmHash, EvmU256};
+
+// Erigon tracing re-exports
+#[cfg(feature = "erigon-tracing")]
+pub use tracing::ErigonTracing;
+#[cfg(feature = "erigon-tracing")]
+pub use types::{
+    BlockTrace, CallTraceRequest, TraceAction, TraceFilter, TraceResult, TraceType,
+    TransactionTrace, VmTrace,
+};
+
+// Lodestar consensus re-exports
+#[cfg(feature = "lodestar-consensus")]
+pub use consensus::{
+    AttesterDuty, LodestarConsensus, NodePeer, NodeVersion, PeerDirection, PeerState, ProposerDuty,
+    SyncDuty,
+};
+#[cfg(feature = "lodestar-consensus")]
+pub use types::{
+    Attestation, AttestationData, BeaconBlock, BeaconBlockBody, BeaconBlockHeader, BlsPublicKey,
+    BlsSignature, Checkpoint, Committee, Epoch, FinalityCheckpoints, Fork, GenesisData,
+    NodeIdentity, Root, Slot, SyncingStatus, Validator, ValidatorBalance, ValidatorIndex,
+    ValidatorStatus,
+};

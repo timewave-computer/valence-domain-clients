@@ -46,6 +46,15 @@ Contains clients for EVM-compatible blockchains:
 - Ethereum client implementations
 - Base EVM client functionality
 - Flashbots bundle support
+- **Erigon tracing API support** (feature: `erigon-tracing`)
+  - Transaction and block tracing
+  - Call simulation and analysis
+  - State diff tracking
+- **Lodestar consensus client API support** (feature: `lodestar-consensus`)
+  - Beacon chain queries
+  - Validator information and duties
+  - Committee management
+  - Node status and sync monitoring
 - Utilities for working with EVM transactions
 
 ### valence-proto
@@ -87,11 +96,19 @@ Several examples are provided in the `examples/` directory:
 - **flashbots_bundle.rs**: Example of creating and submitting Flashbots bundles
 - **base_example.rs**: Basic interactions with Base (an EVM-compatible L2)
 - **cross_chain_transfer.rs**: Example of cross-chain asset transfers
+- **erigon_tracing_example.rs**: Demonstrates Erigon tracing API capabilities
+- **lodestar_consensus_example.rs**: Shows Lodestar consensus client interactions
 
 To run an example:
 
 ```bash
 cargo run --example osmosis_dex
+
+# For tracing features
+cargo run --example erigon_tracing_example --features erigon-tracing
+
+# For consensus features
+cargo run --example lodestar_consensus_example --features lodestar-consensus
 ```
 
 ## Features
@@ -99,6 +116,8 @@ cargo run --example osmosis_dex
 - Full support for Cosmos-based blockchains
 - EVM blockchain support (Ethereum, Base, Optimism, etc.)
 - Flashbots bundle integration
+- **Erigon tracing API integration** for detailed transaction analysis
+- **Lodestar consensus client support** for Ethereum beacon chain interactions
 - Type-safe transaction building
 - Comprehensive error handling
 - Protocol buffer dependency isolation

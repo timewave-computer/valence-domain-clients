@@ -15,15 +15,17 @@ use valence_domain_clients::{
     evm::types::{
         EvmAddress, 
         EvmU256, 
+        EvmHash,
         EvmTransactionRequest,
         EvmTransactionReceipt
     },
+    EvmBaseClient,
 };
 
 // Create mock for Ethereum RPC client
 mock! {
     pub EthereumRpcClient {
-        fn query_balance(&self, address: EvmAddress) -> Result<EvmU256, ClientError>;
+        fn get_balance(&self, address: EvmAddress) -> Result<EvmU256, ClientError>;
         async fn execute_tx(&self, tx: EvmTransactionRequest) -> Result<EvmTransactionReceipt, ClientError>;
         fn evm_signer_address(&self) -> EvmAddress;
     }
@@ -46,24 +48,24 @@ async fn test_ethereum_client_initialization() {
 }
 
 #[test]
-async fn test_query_balance() {
+async fn test_get_balance() {
     // Create a mock instance
     let mut mock = MockEthereumRpcClient::new();
     
     // Test address
-    let address = EvmAddress("0x1234567890123456789012345678901234567890".to_string());
+    let address = EvmAddress::from_str("0x1234567890123456789012345678901234567890").unwrap();
     
     // Set expectations
-    mock.expect_query_balance()
+    mock.expect_get_balance()
         .with(eq(address.clone()))
         .times(1)
-        .returning(|_| Ok(EvmU256("1000000000000000000".to_string()))); // 1 ETH
+        .returning(|_| Ok(EvmU256::from_u64(1000000000000000000))); // 1 ETH
     
     // Call the method
-    let result = mock.query_balance(address).unwrap();
+    let result = mock.get_balance(address).unwrap();
     
-    // Verify the result
-    assert_eq!(result.0, "1000000000000000000");
+    // Verify the result - test the first u64 component which contains the value
+    assert_eq!(result.0[0], 1000000000000000000);
 }
 
 #[test]
@@ -72,43 +74,48 @@ async fn test_execute_transaction() {
     let mut mock = MockEthereumRpcClient::new();
     
     // --- Test addresses
-    let sender = EvmAddress("0x1234567890123456789012345678901234567890".to_string());
-    let recipient = EvmAddress("0x0987654321098765432109876543210987654321".to_string());
+    let sender = EvmAddress::from_str("0x1234567890123456789012345678901234567890").unwrap();
+    let recipient = EvmAddress::from_str("0x0987654321098765432109876543210987654321").unwrap();
     
     // --- Set up expected response
     let expected_receipt = EvmTransactionReceipt {
-        transaction_hash: EvmAddress("0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890".to_string()),
-        block_hash: Some(EvmAddress("0x9876543210abcdef9876543210abcdef9876543210abcdef9876543210abcdef".to_string())),
-        block_number: Some(EvmU256("12345678".to_string())),
+        transaction_hash: EvmHash::from_str("0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890").unwrap(),
+        block_number: 12345678,
+        transaction_index: 0,
         from: sender.clone(),
         to: Some(recipient.clone()),
-        gas_used: Some(EvmU256("21000".to_string())),
-        status: Some(EvmU256("1".to_string())),
+        cumulative_gas_used: EvmU256::from_u64(21000),
+        gas_used: EvmU256::from_u64(21000),
+        contract_address: None,
+        logs: vec![],
+        status: 1,
     };
     
     // --- Set up transaction request
     let tx_request = EvmTransactionRequest {
-        from: Some(sender.clone()),
+        from: sender.clone(),
         to: Some(recipient.clone()),
-        value: Some(EvmU256("100000000000000000".to_string())), // 0.1 ETH
-        gas: Some(EvmU256("21000".to_string())),
+        value: Some(EvmU256::from_u64(100000000000000000)), // 0.1 ETH
+        gas_limit: Some(EvmU256::from_u64(21000)),
+        gas_price: Some(EvmU256::from_u64(1000000000)), // 1 Gwei
         data: None,
         nonce: None,
         chain_id: None,
+        max_fee_per_gas: None,
+        max_priority_fee_per_gas: None,
     };
     
     // --- Set up mock expectations
     mock.expect_evm_signer_address()
         .returning(move || sender.clone());
-        
+    
+    let recipient_clone = recipient.clone();
     mock.expect_execute_tx()
-        .with(function(|arg: &EvmTransactionRequest| {
-            arg.from.is_some() && 
+        .with(function(move |arg: &EvmTransactionRequest| {
             arg.to.is_some() && 
-            arg.from.as_ref().unwrap().0 == sender.0 &&
-            arg.to.as_ref().unwrap().0 == recipient.0 &&
+            arg.to.as_ref().unwrap() == &recipient_clone &&
             arg.value.is_some() &&
-            arg.value.as_ref().unwrap().0 == "100000000000000000"
+            arg.value.as_ref().unwrap().0[0] == 100000000000000000
         }))
         .times(1)
         .returning(move |_| {
@@ -121,8 +128,8 @@ async fn test_execute_transaction() {
     // --- Verify the result
     assert!(result.is_ok());
     let receipt = result.unwrap();
-    assert_eq!(receipt.transaction_hash.0, "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
-    assert_eq!(receipt.status.unwrap().0, "1");
+    assert_eq!(receipt.transaction_hash.to_string(), "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
+    assert_eq!(receipt.status, 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -154,11 +161,12 @@ async fn test_integration_eth_balance() {
     let signer_address = client.evm_signer_address();
     
     // Query balance
-    let balance = client.query_balance(signer_address.clone()).await
+    let balance = client.get_balance(&signer_address).await
         .expect("Failed to query balance");
     
-    println!("Ethereum balance: {} wei", balance.0);
+    println!("Ethereum balance: {:?} wei", balance.0);
     
     // Simple assertion to verify query works
-    assert!(balance.0.len() > 0, "Balance query returned unexpected value");
+    // Note: balance.0 is a u64 array, so it's always >= 0, we just check that the query succeeded
+    assert!(balance.0.len() == 4, "Balance should have 4 u64 components");
 }

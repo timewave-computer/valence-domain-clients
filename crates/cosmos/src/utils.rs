@@ -334,16 +334,16 @@ mod tests {
         // Add some attributes
         proto_event.attributes.push(
             cosmos_sdk_proto::tendermint::abci::EventAttribute {
-                key: "sender".as_bytes().to_vec(),
-                value: "cosmos123".as_bytes().to_vec(),
+                key: "sender".to_string(),
+                value: "cosmos123".to_string(),
                 index: false,
             },
         );
 
         proto_event.attributes.push(
             cosmos_sdk_proto::tendermint::abci::EventAttribute {
-                key: "amount".as_bytes().to_vec(),
-                value: "100uatom".as_bytes().to_vec(),
+                key: "amount".to_string(),
+                value: "100uatom".to_string(),
                 index: false,
             },
         );
@@ -355,8 +355,13 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event_type, "transfer");
         assert_eq!(events[0].attributes.len(), 2);
-        assert_eq!(events[0].attributes.get("sender").unwrap(), "cosmos123");
-        assert_eq!(events[0].attributes.get("amount").unwrap(), "100uatom");
+        
+        // Find attributes by key
+        let sender_attr = events[0].attributes.iter().find(|(k, _)| k == "sender").unwrap();
+        let amount_attr = events[0].attributes.iter().find(|(k, _)| k == "amount").unwrap();
+        
+        assert_eq!(sender_attr.1, "cosmos123");
+        assert_eq!(amount_attr.1, "100uatom");
     }
 
     #[test]

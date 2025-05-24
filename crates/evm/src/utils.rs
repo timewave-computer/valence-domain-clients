@@ -391,13 +391,13 @@ mod tests {
     #[test]
     fn test_validate_ethereum_address() {
         let valid_address = "0x1234567890123456789012345678901234567890";
-        assert!(validate_ethereum_address(valid_address));
+        assert!(is_valid_address(valid_address));
 
         let invalid_address = "1234567890123456789012345678901234567890";
-        assert!(!validate_ethereum_address(invalid_address));
+        assert!(!is_valid_address(invalid_address));
 
         let invalid_address = "0x12345";
-        assert!(!validate_ethereum_address(invalid_address));
+        assert!(!is_valid_address(invalid_address));
     }
 }
 

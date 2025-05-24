@@ -488,6 +488,931 @@ impl EvmBaseClient for GenericEvmClient {
 }
 
 //-----------------------------------------------------------------------------
+// Erigon Tracing Implementation
+//-----------------------------------------------------------------------------
+
+#[cfg(feature = "erigon-tracing")]
+use crate::tracing::ErigonTracing;
+#[cfg(feature = "erigon-tracing")]
+use crate::types::{
+    BlockTrace, CallTraceRequest, TraceFilter, TraceType, TransactionTrace,
+};
+
+#[cfg(feature = "erigon-tracing")]
+#[async_trait::async_trait]
+impl ErigonTracing for GenericEvmClient {
+    async fn trace_transaction(
+        &self,
+        tx_hash: &EvmHash,
+        trace_types: Vec<TraceType>,
+    ) -> Result<TransactionTrace, ClientError> {
+        let params = json!([tx_hash.to_string(), trace_types]);
+
+        let response: TransactionTrace = self
+            .provider
+            .call("trace_transaction", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error tracing transaction: {e}"))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_block(
+        &self,
+        block_number: u64,
+        trace_types: Vec<TraceType>,
+    ) -> Result<BlockTrace, ClientError> {
+        let block_param = format!("0x{block_number:x}");
+        let params = json!([block_param, trace_types]);
+
+        let response: BlockTrace = self
+            .provider
+            .call("trace_block", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error tracing block: {e}"))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_filter(
+        &self,
+        filter: &TraceFilter,
+    ) -> Result<Vec<TransactionTrace>, ClientError> {
+        let params = json!([filter]);
+
+        let response: Vec<TransactionTrace> = self
+            .provider
+            .call("trace_filter", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error filtering traces: {e}"))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_call(
+        &self,
+        call_request: &CallTraceRequest,
+        trace_types: Vec<TraceType>,
+        block_number: Option<u64>,
+    ) -> Result<TransactionTrace, ClientError> {
+        let block_param = match block_number {
+            Some(num) => format!("0x{num:x}"),
+            None => "latest".to_string(),
+        };
+
+        let params = json!([call_request, trace_types, block_param]);
+
+        let response: TransactionTrace = self
+            .provider
+            .call("trace_call", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error tracing call: {e}"))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_call_many(
+        &self,
+        call_requests: &[CallTraceRequest],
+        trace_types: Vec<TraceType>,
+        block_number: Option<u64>,
+    ) -> Result<Vec<TransactionTrace>, ClientError> {
+        let block_param = match block_number {
+            Some(num) => format!("0x{num:x}"),
+            None => "latest".to_string(),
+        };
+
+        let calls_with_types: Vec<_> = call_requests
+            .iter()
+            .map(|req| json!([req, trace_types.clone()]))
+            .collect();
+
+        let params = json!([calls_with_types, block_param]);
+
+        let response: Vec<TransactionTrace> = self
+            .provider
+            .call("trace_callMany", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error tracing multiple calls: {e}"))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_raw_transaction(
+        &self,
+        raw_tx: &[u8],
+        trace_types: Vec<TraceType>,
+        block_number: Option<u64>,
+    ) -> Result<TransactionTrace, ClientError> {
+        let raw_tx_hex = format!("0x{}", hex::encode(raw_tx));
+        let block_param = match block_number {
+            Some(num) => format!("0x{num:x}"),
+            None => "latest".to_string(),
+        };
+
+        let params = json!([raw_tx_hex, trace_types, block_param]);
+
+        let response: TransactionTrace = self
+            .provider
+            .call("trace_rawTransaction", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error tracing raw transaction: {e}"))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_replay_block_transactions(
+        &self,
+        block_number: u64,
+        trace_types: Vec<TraceType>,
+    ) -> Result<Vec<TransactionTrace>, ClientError> {
+        let block_param = format!("0x{block_number:x}");
+        let params = json!([block_param, trace_types]);
+
+        let response: Vec<TransactionTrace> = self
+            .provider
+            .call("trace_replayBlockTransactions", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!(
+                    "Error replaying block transactions: {e}"
+                ))
+            })?;
+
+        Ok(response)
+    }
+
+    async fn trace_replay_transaction(
+        &self,
+        tx_hash: &EvmHash,
+        trace_types: Vec<TraceType>,
+    ) -> Result<TransactionTrace, ClientError> {
+        let params = json!([tx_hash.to_string(), trace_types]);
+
+        let response: TransactionTrace = self
+            .provider
+            .call("trace_replayTransaction", params)
+            .await
+            .map_err(|e| {
+                ClientError::ClientError(format!("Error replaying transaction: {e}"))
+            })?;
+
+        Ok(response)
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Lodestar Consensus Implementation
+//-----------------------------------------------------------------------------
+
+#[cfg(feature = "lodestar-consensus")]
+use crate::consensus::{
+    AttesterDuty, LodestarConsensus, NodePeer, NodeVersion, ProposerDuty, SyncDuty,
+};
+#[cfg(feature = "lodestar-consensus")]
+use crate::types::{
+    Attestation, BeaconBlock, BeaconBlockHeader, Committee, Epoch, FinalityCheckpoints, Fork,
+    GenesisData, NodeIdentity, Root, Slot, SyncingStatus, Validator, ValidatorBalance,
+    ValidatorIndex, ValidatorStatus,
+};
+
+#[cfg(feature = "lodestar-consensus")]
+#[async_trait::async_trait]
+impl LodestarConsensus for GenericEvmClient {
+    async fn get_genesis(&self) -> Result<GenesisData, ClientError> {
+        // Call Lodestar REST API
+        let url = format!("{}/eth/v1/beacon/genesis", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get genesis: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse genesis response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing 'data' in genesis response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize genesis: {e}")))
+    }
+
+    async fn get_state_root(&self, state_id: &str) -> Result<Root, ClientError> {
+        let url = format!("{}/eth/v1/beacon/states/{}/root", self.rpc_url(), state_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get state root: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse state root response: {e}")))?;
+
+        let root_str = response_json
+            .get("data")
+            .and_then(|d| d.get("root"))
+            .and_then(|r| r.as_str())
+            .ok_or_else(|| ClientError::ParseError("Missing root in response".to_string()))?;
+
+        root_str.parse()
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse root: {e}")))
+    }
+
+    async fn get_state_fork(&self, state_id: &str) -> Result<Fork, ClientError> {
+        let url = format!("{}/eth/v1/beacon/states/{}/fork", self.rpc_url(), state_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get fork: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse fork response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing 'data' in fork response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize fork: {e}")))
+    }
+
+    async fn get_state_finality_checkpoints(
+        &self,
+        state_id: &str,
+    ) -> Result<FinalityCheckpoints, ClientError> {
+        let url = format!("{}/eth/v1/beacon/states/{}/finality_checkpoints", self.rpc_url(), state_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get finality checkpoints: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse finality response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing 'data' in finality response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize finality checkpoints: {e}")))
+    }
+
+    async fn get_beacon_block(&self, block_id: &str) -> Result<BeaconBlock, ClientError> {
+        let url = format!("{}/eth/v2/beacon/blocks/{}", self.rpc_url(), block_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get beacon block: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse block response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .and_then(|d| d.get("message"))
+            .ok_or_else(|| ClientError::ParseError("Missing block data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize beacon block: {e}")))
+    }
+
+    async fn get_beacon_block_header(
+        &self,
+        block_id: &str,
+    ) -> Result<BeaconBlockHeader, ClientError> {
+        let url = format!("{}/eth/v1/beacon/headers/{}", self.rpc_url(), block_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get block header: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse header response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .and_then(|d| d.get("header"))
+            .and_then(|h| h.get("message"))
+            .ok_or_else(|| ClientError::ParseError("Missing header data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize block header: {e}")))
+    }
+
+    async fn get_beacon_block_headers(
+        &self,
+        slot: Option<Slot>,
+        parent_root: Option<&Root>,
+    ) -> Result<Vec<BeaconBlockHeader>, ClientError> {
+        let mut url = format!("{}/eth/v1/beacon/headers", self.rpc_url());
+        let mut params = Vec::new();
+
+        if let Some(s) = slot {
+            params.push(format!("slot={s}"));
+        }
+        if let Some(root) = parent_root {
+            params.push(format!("parent_root={root}"));
+        }
+
+        if !params.is_empty() {
+            url.push('?');
+            url.push_str(&params.join("&"));
+        }
+
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get block headers: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse headers response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .and_then(|d| d.as_array())
+            .ok_or_else(|| ClientError::ParseError("Missing headers data in response".to_string()))?;
+
+        let mut headers = Vec::new();
+        for header_data in data {
+            let header = header_data
+                .get("header")
+                .and_then(|h| h.get("message"))
+                .ok_or_else(|| ClientError::ParseError("Missing header in response".to_string()))?;
+
+            let beacon_header: BeaconBlockHeader = serde_json::from_value(header.clone())
+                .map_err(|e| ClientError::ParseError(format!("Failed to deserialize header: {e}")))?;
+            headers.push(beacon_header);
+        }
+
+        Ok(headers)
+    }
+
+    async fn get_block_root(&self, block_id: &str) -> Result<Root, ClientError> {
+        let url = format!("{}/eth/v1/beacon/blocks/{}/root", self.rpc_url(), block_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get block root: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse block root response: {e}")))?;
+
+        let root_str = response_json
+            .get("data")
+            .and_then(|d| d.get("root"))
+            .and_then(|r| r.as_str())
+            .ok_or_else(|| ClientError::ParseError("Missing root in response".to_string()))?;
+
+        root_str.parse()
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse root: {e}")))
+    }
+
+    async fn get_block_attestations(
+        &self,
+        block_id: &str,
+    ) -> Result<Vec<Attestation>, ClientError> {
+        let url = format!("{}/eth/v1/beacon/blocks/{}/attestations", self.rpc_url(), block_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get attestations: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse attestations response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing attestations data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize attestations: {e}")))
+    }
+
+    async fn get_pending_attestations(
+        &self,
+        slot: Option<Slot>,
+        committee_index: Option<u64>,
+    ) -> Result<Vec<Attestation>, ClientError> {
+        let mut url = format!("{}/eth/v1/beacon/pool/attestations", self.rpc_url());
+        let mut params = Vec::new();
+
+        if let Some(s) = slot {
+            params.push(format!("slot={s}"));
+        }
+        if let Some(idx) = committee_index {
+            params.push(format!("committee_index={idx}"));
+        }
+
+        if !params.is_empty() {
+            url.push('?');
+            url.push_str(&params.join("&"));
+        }
+
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get pending attestations: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse pending attestations response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing attestations data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize pending attestations: {e}")))
+    }
+
+    async fn submit_attestations(
+        &self,
+        attestations: &[Attestation],
+    ) -> Result<(), ClientError> {
+        let url = format!("{}/eth/v1/beacon/pool/attestations", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .post(&url)
+            .json(attestations)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to submit attestations: {e}")))?;
+
+        if !response.status().is_success() {
+            return Err(ClientError::ClientError(format!(
+                "Failed to submit attestations: HTTP {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
+    }
+
+    async fn submit_block(&self, block: &BeaconBlock) -> Result<(), ClientError> {
+        let url = format!("{}/eth/v1/beacon/blocks", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .post(&url)
+            .json(block)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to submit block: {e}")))?;
+
+        if !response.status().is_success() {
+            return Err(ClientError::ClientError(format!(
+                "Failed to submit block: HTTP {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
+    }
+
+    async fn get_validator(
+        &self,
+        state_id: &str,
+        validator_id: &str,
+    ) -> Result<Validator, ClientError> {
+        let url = format!("{}/eth/v1/beacon/states/{}/validators/{}", self.rpc_url(), state_id, validator_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get validator: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse validator response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .and_then(|d| d.get("validator"))
+            .ok_or_else(|| ClientError::ParseError("Missing validator data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize validator: {e}")))
+    }
+
+    async fn get_validators(
+        &self,
+        state_id: &str,
+        validator_ids: &[String],
+        status_filter: Option<&[ValidatorStatus]>,
+    ) -> Result<Vec<Validator>, ClientError> {
+        let mut url = format!("{}/eth/v1/beacon/states/{}/validators", self.rpc_url(), state_id);
+        let mut params = Vec::new();
+
+        if !validator_ids.is_empty() {
+            params.push(format!("id={}", validator_ids.join(",")));
+        }
+
+        if let Some(statuses) = status_filter {
+            let status_strings: Vec<String> = statuses.iter()
+                .map(|s| serde_json::to_string(s).unwrap_or_default().trim_matches('"').to_string())
+                .collect();
+            params.push(format!("status={}", status_strings.join(",")));
+        }
+
+        if !params.is_empty() {
+            url.push('?');
+            url.push_str(&params.join("&"));
+        }
+
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get validators: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse validators response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .and_then(|d| d.as_array())
+            .ok_or_else(|| ClientError::ParseError("Missing validators data in response".to_string()))?;
+
+        let mut validators = Vec::new();
+        for validator_data in data {
+            let validator = validator_data
+                .get("validator")
+                .ok_or_else(|| ClientError::ParseError("Missing validator in response".to_string()))?;
+
+            let v: Validator = serde_json::from_value(validator.clone())
+                .map_err(|e| ClientError::ParseError(format!("Failed to deserialize validator: {e}")))?;
+            validators.push(v);
+        }
+
+        Ok(validators)
+    }
+
+    async fn get_validator_balances(
+        &self,
+        state_id: &str,
+        validator_ids: &[String],
+    ) -> Result<Vec<ValidatorBalance>, ClientError> {
+        let mut url = format!("{}/eth/v1/beacon/states/{}/validator_balances", self.rpc_url(), state_id);
+
+        if !validator_ids.is_empty() {
+            url.push('?');
+            url.push_str(&format!("id={}", validator_ids.join(",")));
+        }
+
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get validator balances: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse balances response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing balances data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize validator balances: {e}")))
+    }
+
+    async fn get_epoch_committees(
+        &self,
+        state_id: &str,
+        epoch: Option<Epoch>,
+        index: Option<u64>,
+        slot: Option<Slot>,
+    ) -> Result<Vec<Committee>, ClientError> {
+        let mut url = format!("{}/eth/v1/beacon/states/{}/committees", self.rpc_url(), state_id);
+        let mut params = Vec::new();
+
+        if let Some(e) = epoch {
+            params.push(format!("epoch={e}"));
+        }
+        if let Some(i) = index {
+            params.push(format!("index={i}"));
+        }
+        if let Some(s) = slot {
+            params.push(format!("slot={s}"));
+        }
+
+        if !params.is_empty() {
+            url.push('?');
+            url.push_str(&params.join("&"));
+        }
+
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get committees: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse committees response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing committees data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize committees: {e}")))
+    }
+
+    async fn get_attester_duties(
+        &self,
+        epoch: Epoch,
+        validator_indices: &[ValidatorIndex],
+    ) -> Result<Vec<AttesterDuty>, ClientError> {
+        let url = format!("{}/eth/v1/validator/duties/attester/{}", self.rpc_url(), epoch);
+        let response = self
+            .provider
+            .client
+            .post(&url)
+            .json(validator_indices)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get attester duties: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse duties response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing duties data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize attester duties: {e}")))
+    }
+
+    async fn get_proposer_duties(&self, epoch: Epoch) -> Result<Vec<ProposerDuty>, ClientError> {
+        let url = format!("{}/eth/v1/validator/duties/proposer/{}", self.rpc_url(), epoch);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get proposer duties: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse duties response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing duties data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize proposer duties: {e}")))
+    }
+
+    async fn get_sync_duties(
+        &self,
+        epoch: Epoch,
+        validator_indices: &[ValidatorIndex],
+    ) -> Result<Vec<SyncDuty>, ClientError> {
+        let url = format!("{}/eth/v1/validator/duties/sync/{}", self.rpc_url(), epoch);
+        let response = self
+            .provider
+            .client
+            .post(&url)
+            .json(validator_indices)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get sync duties: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse duties response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing duties data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize sync duties: {e}")))
+    }
+
+    async fn get_node_identity(&self) -> Result<NodeIdentity, ClientError> {
+        let url = format!("{}/eth/v1/node/identity", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get node identity: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse identity response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing identity data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize node identity: {e}")))
+    }
+
+    async fn get_node_peers(&self) -> Result<Vec<NodePeer>, ClientError> {
+        let url = format!("{}/eth/v1/node/peers", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get node peers: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse peers response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing peers data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize node peers: {e}")))
+    }
+
+    async fn get_sync_status(&self) -> Result<SyncingStatus, ClientError> {
+        let url = format!("{}/eth/v1/node/syncing", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get sync status: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse sync response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing sync data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize sync status: {e}")))
+    }
+
+    async fn get_node_version(&self) -> Result<NodeVersion, ClientError> {
+        let url = format!("{}/eth/v1/node/version", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get node version: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse version response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing version data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize node version: {e}")))
+    }
+
+    async fn get_debug_beacon_state(&self, state_id: &str) -> Result<serde_json::Value, ClientError> {
+        let url = format!("{}/eth/v1/debug/beacon/states/{}", self.rpc_url(), state_id);
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get debug state: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse debug state response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing debug state data in response".to_string()))?;
+
+        Ok(data.clone())
+    }
+
+    async fn get_debug_beacon_heads(&self) -> Result<Vec<BeaconBlockHeader>, ClientError> {
+        let url = format!("{}/eth/v1/debug/beacon/heads", self.rpc_url());
+        let response = self
+            .provider
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ClientError::ClientError(format!("Failed to get debug heads: {e}")))?;
+
+        let response_json: Value = response
+            .json()
+            .await
+            .map_err(|e| ClientError::ParseError(format!("Failed to parse debug heads response: {e}")))?;
+
+        let data = response_json
+            .get("data")
+            .ok_or_else(|| ClientError::ParseError("Missing debug heads data in response".to_string()))?;
+
+        serde_json::from_value(data.clone())
+            .map_err(|e| ClientError::ParseError(format!("Failed to deserialize debug heads: {e}")))
+    }
+}
+
+//-----------------------------------------------------------------------------
 // Provider Implementation
 //-----------------------------------------------------------------------------
 

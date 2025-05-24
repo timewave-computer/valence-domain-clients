@@ -4,7 +4,6 @@
 
 use std::env;
 use std::str::FromStr;
-use std::path::Path;
 
 use mockall::predicate::*;
 use mockall::mock;
@@ -28,17 +27,17 @@ mock! {
     pub BaseTestClient {
         fn evm_signer_address(&self) -> EvmAddress;
         
-        async fn get_balance(&self, address: &EvmAddress) -> Result<EvmU256, ClientError>;
+        async fn get_balance(&self, address: EvmAddress) -> Result<EvmU256, ClientError>;
         
-        async fn get_nonce(&self, address: &EvmAddress) -> Result<u64, ClientError>;
+        async fn get_nonce(&self, address: EvmAddress) -> Result<u64, ClientError>;
         
-        async fn send_raw_transaction(&self, tx_bytes: &EvmBytes) -> Result<EvmHash, ClientError>;
+        async fn send_raw_transaction(&self, tx_bytes: EvmBytes) -> Result<EvmHash, ClientError>;
         
-        async fn send_transaction(&self, tx: &EvmTransactionRequest) -> Result<TransactionResponse, ClientError>;
+        async fn send_transaction(&self, tx: EvmTransactionRequest) -> Result<TransactionResponse, ClientError>;
         
-        async fn get_transaction(&self, tx_hash: &EvmHash) -> Result<Option<TransactionResponse>, ClientError>;
+        async fn get_transaction(&self, tx_hash: EvmHash) -> Result<Option<TransactionResponse>, ClientError>;
         
-        async fn wait_for_transaction_receipt(&self, tx_hash: &EvmHash) -> Result<TransactionResponse, ClientError>;
+        async fn wait_for_transaction_receipt(&self, tx_hash: EvmHash) -> Result<TransactionResponse, ClientError>;
         
         async fn get_block_number(&self) -> Result<u64, ClientError>;
         
@@ -48,18 +47,18 @@ mock! {
         
         async fn call_contract(
             &self,
-            to: &EvmAddress,
-            data: &EvmBytes,
-            from: Option<&EvmAddress>,
+            to: EvmAddress,
+            data: EvmBytes,
+            from: Option<EvmAddress>,
             block: Option<u64>,
         ) -> Result<EvmBytes, ClientError>;
         
         async fn estimate_gas(
             &self,
-            to: Option<&EvmAddress>,
-            data: &EvmBytes,
+            to: Option<EvmAddress>,
+            data: EvmBytes,
             value: Option<EvmU256>,
-            from: Option<&EvmAddress>,
+            from: Option<EvmAddress>,
         ) -> Result<EvmU256, ClientError>;
     }
 }
@@ -142,7 +141,7 @@ async fn test_mock_get_balance() {
         .returning(|_| Ok(EvmU256::from_u64(1000000000000000000))); // 1 ETH
     
     // Call the method
-    let result = mock.get_balance(&address).await.unwrap();
+    let result = mock.get_balance(address).await.unwrap();
     
     // Verify the result
     assert_eq!(result.0[0], 1000000000000000000);
@@ -199,15 +198,13 @@ async fn test_mock_transaction() {
         from: sender.clone(),
         to: Some(recipient.clone()),
         value: Some(EvmU256::from_u64(100000000000000000)), // 0.1 ETH
-        gas_limit: Some(21000),
+        gas_limit: Some(EvmU256::from_u64(21000)),
         gas_price: Some(EvmU256::from_u64(1000000000)), // 1 Gwei
         nonce: None,
         data: None,
         chain_id: Some(84532),
-        access_list: None,
         max_fee_per_gas: None,
         max_priority_fee_per_gas: None,
-        transaction_type: None,
     };
     
     // Mock transaction response
@@ -226,26 +223,31 @@ async fn test_mock_transaction() {
     };
     
     // Set up expectations
+    let recipient_clone = recipient.clone();
+    let tx_response_clone1 = tx_response.clone();
+    let tx_response_clone2 = tx_response.clone();
+    
     mock.expect_send_transaction()
-        .with(function(|tx: &EvmTransactionRequest| {
+        .with(function(move |tx: &EvmTransactionRequest| {
             tx.to.is_some() && 
-            tx.to.as_ref().unwrap() == &recipient &&
+            tx.to.as_ref().unwrap() == &recipient_clone &&
             tx.value.is_some() &&
             tx.value.as_ref().unwrap().0[0] == 100000000000000000 &&
             tx.chain_id.unwrap() == 84532
         }))
         .times(1)
-        .returning(move |_| Ok(tx_response.clone()));
+        .returning(move |_| Ok(tx_response_clone1.clone()));
     
     // Mock get transaction
+    let tx_hash_clone = tx_hash.clone();
     mock.expect_get_transaction()
-        .with(eq(tx_hash.clone()))
+        .with(eq(tx_hash_clone))
         .times(1)
-        .returning(move |_| Ok(Some(tx_response.clone())));
+        .returning(move |_| Ok(Some(tx_response_clone2.clone())));
     
     // Call the methods
-    let send_result = mock.send_transaction(&tx_request).await.unwrap();
-    let get_result = mock.get_transaction(&tx_hash).await.unwrap().unwrap();
+    let send_result = mock.send_transaction(tx_request).await.unwrap();
+    let get_result = mock.get_transaction(tx_hash.clone()).await.unwrap().unwrap();
     
     // Verify the results
     assert_eq!(send_result.tx_hash, tx_hash.to_string());
