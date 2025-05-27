@@ -143,8 +143,6 @@ pub trait GrpcSigningClient {
 
         let rx = grpc_client.get_tx(request.clone()).await?;
 
-        println!("query tx hash rx: {:?}", rx);
-
         match rx.into_inner().tx_response {
             Some(r) => Ok(r),
             None => Err(StrategistError::QueryError(
