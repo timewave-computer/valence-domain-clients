@@ -2,8 +2,8 @@ use std::str::FromStr;
 
 use crate::common::error::StrategistError;
 use alloy::contract::{CallBuilder, CallDecoder};
-use alloy::network::Ethereum;
-use alloy::network::Network;
+use alloy::network::{Ethereum, TransactionBuilder};
+use alloy::network::{EthereumWallet, Network};
 use alloy::primitives::{Address, Bytes, U256};
 use alloy::providers::{
     fillers::{BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller},
@@ -101,6 +101,40 @@ pub trait EvmBaseClient: RequestProviderClient {
             .await?;
 
         Ok(tx_response)
+    }
+
+    async fn sign_and_send(
+        &self,
+        tx: TransactionRequest,
+    ) -> Result<TransactionReceipt, StrategistError> {
+        let wallet = EthereumWallet::from(self.signer());
+        let rp = self.get_request_provider().await?;
+
+        // Get current nonce
+        let nonce = rp.get_transaction_count(self.signer().address()).await?;
+        // Add nonce and sender to transaction request
+        let tx_with_nonce_and_sender = tx.nonce(nonce).from(self.signer().address());
+        // Fill the transaction request with all other necessary information from request provider
+        let tx_request = match rp.fill(tx_with_nonce_and_sender).await?.as_builder() {
+            Some(tx_request) => tx_request.clone(),
+            None => {
+                return Err(StrategistError::TransactionError(
+                    "Failed to fill transaction request".to_string(),
+                ));
+            }
+        };
+        // Sign the transaction
+        let tx_envelope = tx_request.build(&wallet).await.map_err(|e| {
+            StrategistError::TransactionError(format!("Failed to sign transaction: {}", e))
+        })?;
+        // Send the transaction
+        let tx_hash = rp
+            .send_tx_envelope(tx_envelope)
+            .await?
+            .get_receipt()
+            .await?;
+
+        Ok(tx_hash)
     }
 
     async fn query<Q: EvmQueryRequest + Send>(
