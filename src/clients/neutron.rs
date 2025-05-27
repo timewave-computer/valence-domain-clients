@@ -233,7 +233,7 @@ impl GrpcSigningClient for NeutronClient {
 
 #[cfg(test)]
 mod tests {
-    use std::time::{Duration, Instant, SystemTime};
+    use std::time::{Duration, SystemTime};
 
     use serde::Deserialize;
     use serde_json::json;
@@ -257,7 +257,7 @@ mod tests {
     const _CHAIN_ID: &str = "neutron-1";
     const _GRPC_URL: &str = "-";
     const _GRPC_PORT: &str = "-";
-    const NEUTRON_DAO_ADDR: &str =
+    const _NEUTRON_DAO_ADDR: &str =
         "neutron1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrstdxvff";
     const _MNEMONIC: &str = "-";
 
@@ -464,26 +464,19 @@ mod tests {
     }
 
     #[tokio::test]
-    // #[ignore = "requires local neutron grpc node active"]
+    #[ignore = "requires local neutron grpc node active"]
     async fn test_instantiate2_wasm() {
-        let client = NeutronClient::new(
-            LOCAL_GRPC_URL,
-            LOCAL_GRPC_PORT,
-            LOCAL_MNEMONIC,
-            LOCAL_CHAIN_ID,
-        )
-        .await
-        .unwrap();
-
-        let authorizations_code = client
-            .upload_code("valence_authorization.wasm")
+        let client = NeutronClient::new(_GRPC_URL, _GRPC_PORT, _MNEMONIC, _CHAIN_ID)
             .await
             .unwrap();
 
+        let signing_client = client.get_signing_client().await.unwrap();
+
+        let base_acc_code = 3319;
+
         let instantiate_msg = json!({
-            "owner": LOCAL_PROCESSOR_ADDR,
-            "sub_owners": [],
-            "processor": LOCAL_PROCESSOR_ADDR.to_string(),
+            "admin": signing_client.address.to_string(),
+            "approved_libraries": [],
         });
 
         let salt = hex::encode(
@@ -494,17 +487,28 @@ mod tests {
                 .to_string(),
         );
 
-        let authorizations_addr = client
+        let predicted_base_acc_addr = client
+            .predict_instantiate2_addr(
+                base_acc_code,
+                salt.clone(),
+                signing_client.address.to_string(),
+            )
+            .await
+            .unwrap()
+            .address;
+
+        let instantiated_base_acc_addr = client
             .instantiate2(
-                authorizations_code,
-                Some("random_label".to_string()),
+                base_acc_code,
+                Some("test_instantiate_2".to_string()),
                 instantiate_msg,
-                Some(NEUTRON_DAO_ADDR.to_string()),
+                None,
                 salt,
             )
             .await
             .unwrap();
-        assert!(authorizations_addr.starts_with("neutron"));
+
+        assert_eq!(predicted_base_acc_addr, instantiated_base_acc_addr);
     }
 
     #[tokio::test]

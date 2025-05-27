@@ -1,14 +1,11 @@
-use std::{fs, path::Path, str::FromStr, time::Instant};
+use std::{fs, path::Path, str::FromStr};
 
 use async_trait::async_trait;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::{
-    CodeInfo, MsgInstantiateContract2, QueryCodeRequest, QueryCodeResponse,
+    MsgInstantiateContract2, QueryBuildAddressRequest, QueryBuildAddressResponse, QueryCodeRequest,
+    QueryCodeResponse,
 };
-use cosmrs::{
-    cosmwasm::{CodeInfoResponse, MsgInstantiateContract},
-    tx::{Fee, MessageExt},
-    Any, Coin,
-};
+use cosmrs::{cosmwasm::MsgInstantiateContract, tx::Fee, Any, Coin};
 use prost::{Message, Name};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -166,6 +163,43 @@ pub trait WasmClient: GrpcSigningClient {
         Ok(code_query_response)
     }
 
+    async fn predict_instantiate2_addr(
+        &self,
+        code_id: u64,
+        salt: String,
+        creator: String,
+    ) -> Result<QueryBuildAddressResponse, StrategistError> {
+        let code_info = self.query_code_info(code_id).await?.code_info;
+
+        let code_id_hash = match code_info {
+            Some(ci) => ci.data_hash,
+            None => {
+                return Err(StrategistError::TransactionError(
+                    "failed to get code info from code query".to_string(),
+                ))
+            }
+        };
+
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = WasmQueryClient::new(channel);
+
+        let build_address_query_request = QueryBuildAddressRequest {
+            code_hash: hex::encode(code_id_hash),
+            creator_address: creator,
+            salt,
+            init_args: vec![],
+        };
+
+        let build_address_query_response = grpc_client
+            .build_address(build_address_query_request)
+            .await?;
+
+        let inner = build_address_query_response.into_inner();
+
+        Ok(inner)
+    }
+
     async fn instantiate2(
         &self,
         code_id: u64,
@@ -188,7 +222,7 @@ pub trait WasmClient: GrpcSigningClient {
             label: label.unwrap_or_default(),
             msg: msg_bytes,
             funds: vec![],
-            salt: salt.to_bytes()?,
+            salt: hex::decode(salt).map_err(|e| StrategistError::ParseError(e.to_string()))?,
             fix_msg: false,
         };
 
@@ -222,14 +256,10 @@ pub trait WasmClient: GrpcSigningClient {
         let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
 
         // filter abci logs to find the contract address
-        for abci_msg_log in query_tx_response.logs.iter() {
-            for event in abci_msg_log.events.iter() {
-                if event.r#type == "instantiate" || event.r#type == "instantiate_contract" {
-                    for attr in event.attributes.iter() {
-                        if attr.key == "_contract_address" || attr.key == "contract_address" {
-                            return Ok(attr.value.clone());
-                        }
-                    }
+        for event in query_tx_response.events.iter() {
+            for event_attr in event.attributes.iter() {
+                if event_attr.key == "_contract_address" {
+                    return Ok(event_attr.value.to_string());
                 }
             }
         }
