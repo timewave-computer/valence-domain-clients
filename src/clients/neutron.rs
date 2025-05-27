@@ -406,7 +406,7 @@ mod tests {
     }
 
     #[tokio::test]
-    // #[ignore = "requires local neutron grpc node active"]
+    #[ignore = "requires local neutron grpc node active"]
     async fn test_upload_wasm() {
         let client = NeutronClient::new(
             LOCAL_GRPC_URL,
@@ -426,12 +426,14 @@ mod tests {
         assert_eq!(authorizations_code + 1, processor_code);
 
         let code_info_response = client.query_code_info(authorizations_code).await.unwrap();
-
-        println!("code info resp: {:?}", code_info_response);
+        assert_eq!(
+            code_info_response.code_info.unwrap().code_id,
+            authorizations_code
+        );
     }
 
     #[tokio::test]
-    // #[ignore = "requires local neutron grpc node active"]
+    #[ignore = "requires local neutron grpc node active"]
     async fn test_instantiate_wasm() {
         let client = NeutronClient::new(
             LOCAL_GRPC_URL,
