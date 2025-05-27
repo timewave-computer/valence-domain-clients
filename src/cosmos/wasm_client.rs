@@ -72,12 +72,14 @@ pub trait WasmClient: GrpcSigningClient {
 
         let query_tx_response = self.query_tx_hash(&tx_response.hash).await?;
 
-        for tx_event in query_tx_response.events.iter() {
-            for event_attr in tx_event.attributes.iter() {
-                if event_attr.key == "code_id" {
-                    return event_attr.value.parse::<u64>().map_err(|_| {
-                        StrategistError::ParseError("Failed to parse code_id".to_string())
-                    });
+        for abci_msg_log in query_tx_response.logs.iter() {
+            for event in abci_msg_log.events.iter() {
+                for attr in event.attributes.iter() {
+                    if attr.key == "code_id" {
+                        return attr.value.parse::<u64>().map_err(|_| {
+                            StrategistError::ParseError("Failed to parse code_id".to_string())
+                        });
+                    }
                 }
             }
         }
