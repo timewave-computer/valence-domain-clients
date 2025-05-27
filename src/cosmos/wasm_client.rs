@@ -1,9 +1,11 @@
 use std::{fs, path::Path, str::FromStr, time::Instant};
 
 use async_trait::async_trait;
-use cosmos_sdk_proto::cosmwasm::wasm::v1::MsgInstantiateContract2;
+use cosmos_sdk_proto::cosmwasm::wasm::v1::{
+    CodeInfo, MsgInstantiateContract2, QueryCodeRequest, QueryCodeResponse,
+};
 use cosmrs::{
-    cosmwasm::MsgInstantiateContract,
+    cosmwasm::{CodeInfoResponse, MsgInstantiateContract},
     tx::{Fee, MessageExt},
     Any, Coin,
 };
@@ -150,6 +152,18 @@ pub trait WasmClient: GrpcSigningClient {
             "Failed to find contract address in transaction response: {:?}",
             query_tx_response
         )))
+    }
+
+    async fn query_code_info(&self, code_id: u64) -> Result<QueryCodeResponse, StrategistError> {
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = WasmQueryClient::new(channel);
+
+        let code_query_request = QueryCodeRequest { code_id };
+
+        let code_query_response = grpc_client.code(code_query_request).await?.into_inner();
+
+        Ok(code_query_response)
     }
 
     async fn instantiate2(

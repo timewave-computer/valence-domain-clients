@@ -424,6 +424,10 @@ mod tests {
         let processor_code = client.upload_code("valence_processor.wasm").await.unwrap();
 
         assert_eq!(authorizations_code + 1, processor_code);
+
+        let code_info_response = client.query_code_info(authorizations_code).await.unwrap();
+
+        println!("code info resp: {:?}", code_info_response);
     }
 
     #[tokio::test]
