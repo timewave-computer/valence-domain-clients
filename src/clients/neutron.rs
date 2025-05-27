@@ -457,7 +457,7 @@ mod tests {
         let authorizations_addr = client
             .instantiate(
                 authorizations_code,
-                Some("authorizations_test".to_string()),
+                "authorizations_test".to_string(),
                 instantiate_msg,
             )
             .await
@@ -502,7 +502,7 @@ mod tests {
         let instantiated_base_acc_addr = client
             .instantiate2(
                 base_acc_code,
-                Some("test_instantiate_2".to_string()),
+                "test_instantiate_2".to_string(),
                 instantiate_msg,
                 None,
                 salt,

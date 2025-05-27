@@ -96,7 +96,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
     async fn instantiate(
         &self,
         code_id: u64,
-        label: Option<String>,
+        label: String,
         msg: (impl Serialize + Send),
     ) -> Result<String, StrategistError> {
         let signing_client = self.get_signing_client().await?;
@@ -104,11 +104,15 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         let msg_bytes = serde_json::to_vec(&msg)?;
 
+        if label.is_empty() {
+            return Err(StrategistError::TransactionError("contract label cannot be empty".to_string()))
+        }
+
         let instantiate_tx = MsgInstantiateContract {
             sender: signing_client.address.clone(),
             admin: None,
             code_id,
-            label,
+            label: Some(label),
             msg: msg_bytes,
             funds: vec![],
         }
@@ -205,7 +209,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
     async fn instantiate2(
         &self,
         code_id: u64,
-        label: Option<String>,
+        label: String,
         msg: (impl Serialize + Send),
         admin: Option<String>,
         salt: String,
@@ -217,11 +221,15 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         let sender = signing_client.address.to_string();
 
+        if label.is_empty() {
+            return Err(StrategistError::TransactionError("contract label cannot be empty".to_string()))
+        }
+
         let instantiate_contract2_msg = MsgInstantiateContract2 {
             admin: admin.unwrap_or(sender.to_string()),
             sender,
             code_id,
-            label: label.unwrap_or_default(),
+            label,
             msg: msg_bytes,
             funds: vec![],
             salt: hex::decode(salt).map_err(|e| StrategistError::ParseError(e.to_string()))?,
