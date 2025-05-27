@@ -70,26 +70,21 @@ pub trait WasmClient: GrpcSigningClient {
             ));
         }
 
-        // 3. Extract the code ID from the transaction events
-        // We know tx_response is Some based on previous check
-        let response = broadcast_tx_response.tx_response.as_ref().unwrap();
+        let query_tx_response = self.query_tx_hash(&tx_response.hash).await?;
 
-        // Find the "store_code" event and extract the code_id attribute
-        for event in response.logs.iter().flat_map(|log| &log.events) {
-            if event.r#type == "store_code" {
-                for attr in &event.attributes {
-                    if attr.key == "code_id" {
-                        return attr.value.parse::<u64>().map_err(|_| {
-                            StrategistError::ParseError("Failed to parse code_id".to_string())
-                        });
-                    }
+        for tx_event in query_tx_response.events.iter() {
+            for event_attr in tx_event.attributes.iter() {
+                if event_attr.key == "code_id" {
+                    return event_attr.value.parse::<u64>().map_err(|_| {
+                        StrategistError::ParseError("Failed to parse code_id".to_string())
+                    });
                 }
             }
         }
 
         Err(StrategistError::ParseError(format!(
             "Failed to find code_id in transaction response: {:?}",
-            response
+            query_tx_response
         )))
     }
 

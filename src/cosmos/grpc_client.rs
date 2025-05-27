@@ -1,5 +1,8 @@
 use alloy::transports::http::reqwest;
-use cosmos_sdk_proto::cosmos::tx::v1beta1::{SimulateRequest, SimulateResponse};
+use cosmos_sdk_proto::cosmos::{
+    base::abci::v1beta1::TxResponse,
+    tx::v1beta1::{GetTxRequest, SimulateRequest, SimulateResponse},
+};
 use cosmrs::{
     tx::{BodyBuilder, Fee, SignDoc, SignerInfo},
     Any, Coin,
@@ -127,5 +130,24 @@ pub trait GrpcSigningClient {
         })?;
 
         Ok(average_gas_price)
+    }
+
+    async fn query_tx_hash(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = CosmosServiceClient::new(channel);
+
+        let request = GetTxRequest {
+            hash: tx_hash.to_string(),
+        };
+
+        let rx = grpc_client.get_tx(request.clone()).await?;
+
+        match rx.into_inner().tx_response {
+            Some(r) => Ok(r),
+            None => Err(StrategistError::QueryError(
+                "no tx found with given hash".to_string(),
+            )),
+        }
     }
 }
