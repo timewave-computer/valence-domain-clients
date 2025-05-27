@@ -233,7 +233,7 @@ impl GrpcSigningClient for NeutronClient {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::time::{Duration, Instant, SystemTime};
 
     use serde::Deserialize;
     use serde_json::json;
@@ -257,7 +257,7 @@ mod tests {
     const _CHAIN_ID: &str = "neutron-1";
     const _GRPC_URL: &str = "-";
     const _GRPC_PORT: &str = "-";
-    const _NEUTRON_DAO_ADDR: &str =
+    const NEUTRON_DAO_ADDR: &str =
         "neutron1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrstdxvff";
     const _MNEMONIC: &str = "-";
 
@@ -456,6 +456,51 @@ mod tests {
             )
             .await
             .unwrap();
+        assert!(authorizations_addr.starts_with("neutron"));
+    }
+
+    #[tokio::test]
+    // #[ignore = "requires local neutron grpc node active"]
+    async fn test_instantiate2_wasm() {
+        let client = NeutronClient::new(
+            LOCAL_GRPC_URL,
+            LOCAL_GRPC_PORT,
+            LOCAL_MNEMONIC,
+            LOCAL_CHAIN_ID,
+        )
+        .await
+        .unwrap();
+
+        let authorizations_code = client
+            .upload_code("valence_authorization.wasm")
+            .await
+            .unwrap();
+
+        let instantiate_msg = json!({
+            "owner": LOCAL_PROCESSOR_ADDR,
+            "sub_owners": [],
+            "processor": LOCAL_PROCESSOR_ADDR.to_string(),
+        });
+
+        let salt = hex::encode(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                .to_string(),
+        );
+
+        let authorizations_addr = client
+            .instantiate2(
+                authorizations_code,
+                Some("random_label".to_string()),
+                instantiate_msg,
+                Some(NEUTRON_DAO_ADDR.to_string()),
+                salt,
+            )
+            .await
+            .unwrap();
+        assert!(authorizations_addr.starts_with("neutron"));
     }
 
     #[tokio::test]

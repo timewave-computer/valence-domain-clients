@@ -1,7 +1,13 @@
-use std::{fs, path::Path, str::FromStr};
+use std::{fs, path::Path, str::FromStr, time::Instant};
 
 use async_trait::async_trait;
-use cosmrs::{cosmwasm::MsgInstantiateContract, tx::Fee, Coin};
+use cosmos_sdk_proto::cosmwasm::wasm::v1::MsgInstantiateContract2;
+use cosmrs::{
+    cosmwasm::MsgInstantiateContract,
+    tx::{Fee, MessageExt},
+    Any, Coin,
+};
+use prost::{Message, Name};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::common::{error::StrategistError, transaction::TransactionResponse};
@@ -124,6 +130,80 @@ pub trait WasmClient: GrpcSigningClient {
             }
         };
 
+        // poll the node until txhash resolves to a response
+        let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
+
+        // filter abci logs to find the contract address
+        for abci_msg_log in query_tx_response.logs.iter() {
+            for event in abci_msg_log.events.iter() {
+                if event.r#type == "instantiate" || event.r#type == "instantiate_contract" {
+                    for attr in event.attributes.iter() {
+                        if attr.key == "_contract_address" || attr.key == "contract_address" {
+                            return Ok(attr.value.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        Err(StrategistError::ParseError(format!(
+            "Failed to find contract address in transaction response: {:?}",
+            query_tx_response
+        )))
+    }
+
+    async fn instantiate2(
+        &self,
+        code_id: u64,
+        label: Option<String>,
+        msg: (impl Serialize + Send),
+        admin: Option<String>,
+        salt: String,
+    ) -> Result<String, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+        let channel = self.get_grpc_channel().await?;
+
+        let msg_bytes = serde_json::to_vec(&msg)?;
+
+        let sender = signing_client.address.to_string();
+
+        let instantiate_contract2_msg = MsgInstantiateContract2 {
+            admin: admin.unwrap_or(sender.to_string()),
+            sender,
+            code_id,
+            label: label.unwrap_or_default(),
+            msg: msg_bytes,
+            funds: vec![],
+            salt: salt.to_bytes()?,
+            fix_msg: false,
+        };
+
+        // manually encode proto because MsgInstantiateContract2 does not
+        // expose the helper method
+        let mut value = Vec::new();
+        Message::encode(&instantiate_contract2_msg, &mut value)?;
+
+        let any_msg = Any {
+            type_url: MsgInstantiateContract2::type_url(),
+            value,
+        };
+
+        let simulation_response = self.simulate_tx(any_msg.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
+
+        let raw_tx = signing_client.create_tx(any_msg, fee, None).await?;
+
+        let mut grpc_client = CosmosServiceClient::new(channel);
+        let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
+
+        let tx_response = match &broadcast_tx_response.tx_response {
+            Some(response) => response,
+            None => {
+                return Err(StrategistError::TransactionError(
+                    "No transaction response returned".to_string(),
+                ))
+            }
+        };
         // poll the node until txhash resolves to a response
         let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
 
