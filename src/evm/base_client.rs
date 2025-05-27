@@ -115,12 +115,14 @@ pub trait EvmBaseClient: RequestProviderClient {
         // Add nonce and sender to transaction request
         let tx_with_nonce_and_sender = tx.nonce(nonce).from(self.signer().address());
         // Fill the transaction request with all other necessary information from request provider
-        let tx_request = rp
-            .fill(tx_with_nonce_and_sender)
-            .await?
-            .as_builder()
-            .unwrap()
-            .clone();
+        let tx_request = match rp.fill(tx_with_nonce_and_sender).await?.as_builder() {
+            Some(tx_request) => tx_request.clone(),
+            None => {
+                return Err(StrategistError::TransactionError(
+                    "Failed to fill transaction request".to_string(),
+                ));
+            }
+        };
         // Sign the transaction
         let tx_envelope = tx_request.build(&wallet).await.map_err(|e| {
             StrategistError::TransactionError(format!("Failed to sign transaction: {}", e))
