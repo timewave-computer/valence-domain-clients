@@ -10,9 +10,10 @@ use tonic::Request;
 use super::{grpc_client::GrpcSigningClient, CosmosServiceClient, WasmQueryClient};
 
 use cosmrs::{
-    cosmwasm::{MsgExecuteContract, MsgStoreCode}, 
+    cosmwasm::{MsgExecuteContract, MsgStoreCode},
     proto::cosmwasm::wasm::v1::QuerySmartContractStateRequest,
-    tx::Msg, AccountId,
+    tx::Msg,
+    AccountId,
 };
 
 /// wasm funcionality trait with default implementations for cosmos-sdk based clients.
@@ -43,7 +44,8 @@ pub trait WasmClient: GrpcSigningClient {
             sender: signing_client.address.clone(),
             wasm_byte_code: wasm_bytes,
             instantiate_permission: None,
-        }.to_any()?;
+        }
+        .to_any()?;
 
         let simulation_response = self.simulate_tx(store_code_msg.clone()).await?;
         let fee = self.get_tx_fee(simulation_response)?;
@@ -61,7 +63,7 @@ pub trait WasmClient: GrpcSigningClient {
                 ))
             }
         };
-        
+
         if !tx_response.success {
             return Err(StrategistError::TransactionError(
                 "Failed to upload WASM code".to_string(),
@@ -71,7 +73,7 @@ pub trait WasmClient: GrpcSigningClient {
         // 3. Extract the code ID from the transaction events
         // We know tx_response is Some based on previous check
         let response = broadcast_tx_response.tx_response.as_ref().unwrap();
-        
+
         // Find the "store_code" event and extract the code_id attribute
         for event in response.logs.iter().flat_map(|log| &log.events) {
             if event.r#type == "store_code" {
@@ -85,9 +87,10 @@ pub trait WasmClient: GrpcSigningClient {
             }
         }
 
-        Err(StrategistError::ParseError(
-            "Failed to find code_id in transaction response".to_string(),
-        ))
+        Err(StrategistError::ParseError(format!(
+            "Failed to find code_id in transaction response: {:?}",
+            response
+        )))
     }
 
     async fn query_contract_state<T: DeserializeOwned>(
