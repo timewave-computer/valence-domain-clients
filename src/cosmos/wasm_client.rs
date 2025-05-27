@@ -56,7 +56,7 @@ pub trait WasmClient: GrpcSigningClient {
         let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
 
         let tx_response = match &broadcast_tx_response.tx_response {
-            Some(response) => TransactionResponse::try_from(response.clone())?,
+            Some(response) => response,
             None => {
                 return Err(StrategistError::TransactionError(
                     "No transaction response returned".to_string(),
@@ -64,14 +64,10 @@ pub trait WasmClient: GrpcSigningClient {
             }
         };
 
-        if !tx_response.success {
-            return Err(StrategistError::TransactionError(
-                "Failed to upload WASM code".to_string(),
-            ));
-        }
+        // poll the node until txhash resolves to a response
+        let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
 
-        let query_tx_response = self.query_tx_hash(&tx_response.hash).await?;
-
+        // filter abci logs to find the resulting code id
         for abci_msg_log in query_tx_response.logs.iter() {
             for event in abci_msg_log.events.iter() {
                 for attr in event.attributes.iter() {
@@ -86,7 +82,7 @@ pub trait WasmClient: GrpcSigningClient {
 
         Err(StrategistError::ParseError(format!(
             "Failed to find code_id in transaction response: {:?}",
-            query_tx_response
+            tx_response
         )))
     }
 
