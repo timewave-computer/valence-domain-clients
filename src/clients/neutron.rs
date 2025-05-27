@@ -417,12 +417,45 @@ mod tests {
         .await
         .unwrap();
 
-        let resp = client
+        let authorizations_code = client
+            .upload_code("valence_authorization.wasm")
+            .await
+            .unwrap();
+        let processor_code = client.upload_code("valence_processor.wasm").await.unwrap();
+
+        assert_eq!(authorizations_code + 1, processor_code);
+    }
+
+    #[tokio::test]
+    // #[ignore = "requires local neutron grpc node active"]
+    async fn test_instantiate_wasm() {
+        let client = NeutronClient::new(
+            LOCAL_GRPC_URL,
+            LOCAL_GRPC_PORT,
+            LOCAL_MNEMONIC,
+            LOCAL_CHAIN_ID,
+        )
+        .await
+        .unwrap();
+
+        let authorizations_code = client
             .upload_code("valence_authorization.wasm")
             .await
             .unwrap();
 
-        println!("response: {:?}", resp);
+        let instantiate_msg = json!({
+            "owner": LOCAL_PROCESSOR_ADDR,
+            "sub_owners": [],
+            "processor": LOCAL_PROCESSOR_ADDR.to_string(),
+        });
+        let authorizations_addr = client
+            .instantiate(
+                authorizations_code,
+                Some("authorizations_test".to_string()),
+                instantiate_msg,
+            )
+            .await
+            .unwrap();
     }
 
     #[tokio::test]

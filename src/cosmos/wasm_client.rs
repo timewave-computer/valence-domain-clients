@@ -1,7 +1,7 @@
 use std::{fs, path::Path, str::FromStr};
 
 use async_trait::async_trait;
-use cosmrs::{tx::Fee, Coin};
+use cosmrs::{cosmwasm::MsgInstantiateContract, tx::Fee, Coin};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::common::{error::StrategistError, transaction::TransactionResponse};
@@ -83,6 +83,66 @@ pub trait WasmClient: GrpcSigningClient {
         Err(StrategistError::ParseError(format!(
             "Failed to find code_id in transaction response: {:?}",
             tx_response
+        )))
+    }
+
+    async fn instantiate(
+        &self,
+        code_id: u64,
+        label: Option<String>,
+        msg: (impl Serialize + Send),
+    ) -> Result<String, StrategistError> {
+        let signing_client = self.get_signing_client().await?;
+        let channel = self.get_grpc_channel().await?;
+
+        let msg_bytes = serde_json::to_vec(&msg)?;
+
+        let instantiate_tx = MsgInstantiateContract {
+            sender: signing_client.address.clone(),
+            admin: None,
+            code_id,
+            label,
+            msg: msg_bytes,
+            funds: vec![],
+        }
+        .to_any()?;
+
+        let simulation_response = self.simulate_tx(instantiate_tx.clone()).await?;
+        let fee = self.get_tx_fee(simulation_response)?;
+
+        let raw_tx = signing_client.create_tx(instantiate_tx, fee, None).await?;
+
+        let mut grpc_client = CosmosServiceClient::new(channel);
+        let broadcast_tx_response = grpc_client.broadcast_tx(raw_tx).await?.into_inner();
+
+        let tx_response = match &broadcast_tx_response.tx_response {
+            Some(response) => response,
+            None => {
+                return Err(StrategistError::TransactionError(
+                    "No transaction response returned".to_string(),
+                ))
+            }
+        };
+
+        // poll the node until txhash resolves to a response
+        let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
+
+        // filter abci logs to find the contract address
+        for abci_msg_log in query_tx_response.logs.iter() {
+            for event in abci_msg_log.events.iter() {
+                if event.r#type == "instantiate" || event.r#type == "instantiate_contract" {
+                    for attr in event.attributes.iter() {
+                        if attr.key == "_contract_address" || attr.key == "contract_address" {
+                            return Ok(attr.value.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        Err(StrategistError::ParseError(format!(
+            "Failed to find contract address in transaction response: {:?}",
+            query_tx_response
         )))
     }
 
