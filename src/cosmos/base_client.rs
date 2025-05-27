@@ -6,7 +6,8 @@ use cosmos_sdk_proto::cosmos::{
         ModuleAccount, QueryModuleAccountByNameRequest, QueryModuleAccountByNameResponse,
     },
     bank::v1beta1::{QueryBalanceRequest, QueryBalanceResponse},
-    base::tendermint::v1beta1::Header,
+    base::{abci::v1beta1::TxResponse, tendermint::v1beta1::Header},
+    tx::v1beta1::GetTxRequest,
 };
 
 use cosmrs::{
@@ -164,6 +165,66 @@ pub trait BaseClient: GrpcSigningClient {
         })?;
 
         Ok(module_account)
+    }
+
+    async fn poll_for_tx(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = CosmosServiceClient::new(channel);
+
+        let request = GetTxRequest {
+            hash: tx_hash.to_string(),
+        };
+
+        // using tokio for timing utils instead of system to not block the entire thread.
+        //
+        // for 5 seconds it will repeatedly fire tx polling requests to the node.
+        // if 100ms turns out to hit the node too hard, increase it. maybe this can be
+        // passed in as an arg.
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(200));
+        for _ in 1..50 {
+            interval.tick().await;
+            let rx = grpc_client.get_tx(request.clone()).await;
+            match rx {
+                Ok(response) => {
+                    let r = response.into_inner();
+                    if let Some(tx_response) = r.tx_response {
+                        return Ok(tx_response);
+                    }
+                }
+                Err(tonic_status) => match tonic_status.code() {
+                    // if tx code not found, continue polling
+                    tonic::Code::NotFound => {
+                        continue;
+                    }
+                    // otherwise return the error
+                    _ => break,
+                },
+            };
+        }
+
+        Err(StrategistError::QueryError(
+            "failed to confirm tx".to_string(),
+        ))
+    }
+
+    async fn query_tx_hash(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = CosmosServiceClient::new(channel);
+
+        let request = GetTxRequest {
+            hash: tx_hash.to_string(),
+        };
+
+        let rx = grpc_client.get_tx(request.clone()).await?;
+
+        match rx.into_inner().tx_response {
+            Some(r) => Ok(r),
+            None => Err(StrategistError::QueryError(
+                "no tx found with given hash".to_string(),
+            )),
+        }
     }
 
     async fn poll_until_expected_balance(

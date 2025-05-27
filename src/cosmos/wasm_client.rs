@@ -12,7 +12,9 @@ use serde::{de::DeserializeOwned, Serialize};
 use crate::common::{error::StrategistError, transaction::TransactionResponse};
 use tonic::Request;
 
-use super::{grpc_client::GrpcSigningClient, CosmosServiceClient, WasmQueryClient};
+use super::{
+    base_client::BaseClient, grpc_client::GrpcSigningClient, CosmosServiceClient, WasmQueryClient,
+};
 
 use cosmrs::{
     cosmwasm::{MsgExecuteContract, MsgStoreCode},
@@ -26,7 +28,7 @@ use cosmrs::{
 /// for chains which are somehow unique in their wasm module implementations,
 /// these function definitions can be overridden to match that of the chain.
 #[async_trait]
-pub trait WasmClient: GrpcSigningClient {
+pub trait WasmClient: GrpcSigningClient + BaseClient {
     async fn upload_code(&self, wasm_path: &str) -> Result<u64, StrategistError> {
         // 1. load the wasm from storage
         let wasm_path = Path::new(wasm_path);
