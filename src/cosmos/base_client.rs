@@ -167,7 +167,6 @@ pub trait BaseClient: GrpcSigningClient {
         Ok(module_account)
     }
 
-    // expected utils
     async fn poll_for_tx(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
         let channel = self.get_grpc_channel().await?;
 
@@ -207,6 +206,25 @@ pub trait BaseClient: GrpcSigningClient {
         Err(StrategistError::QueryError(
             "failed to confirm tx".to_string(),
         ))
+    }
+
+    async fn query_tx_hash(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
+        let channel = self.get_grpc_channel().await?;
+
+        let mut grpc_client = CosmosServiceClient::new(channel);
+
+        let request = GetTxRequest {
+            hash: tx_hash.to_string(),
+        };
+
+        let rx = grpc_client.get_tx(request.clone()).await?;
+
+        match rx.into_inner().tx_response {
+            Some(r) => Ok(r),
+            None => Err(StrategistError::QueryError(
+                "no tx found with given hash".to_string(),
+            )),
+        }
     }
 
     async fn poll_until_expected_balance(

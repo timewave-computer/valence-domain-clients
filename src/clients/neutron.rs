@@ -233,7 +233,7 @@ impl GrpcSigningClient for NeutronClient {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::time::{Duration, SystemTime};
 
     use serde::Deserialize;
     use serde_json::json;
@@ -243,7 +243,7 @@ mod tests {
     use super::*;
 
     const LOCAL_GRPC_URL: &str = "http://127.0.0.1";
-    const LOCAL_GRPC_PORT: &str = "39381";
+    const LOCAL_GRPC_PORT: &str = "32889";
     const LOCAL_MNEMONIC: &str = "decorate bright ozone fork gallery riot bus exhaust worth way bone indoor calm squirrel merry zero scheme cotton until shop any excess stage laundry";
     const LOCAL_ALT_ADDR: &str = "neutron1kljf09rj77uxeu5lye7muejx6ajsu55cuw2mws";
     const LOCAL_CHAIN_ID: &str = "localneutron-1";
@@ -403,6 +403,114 @@ mod tests {
         let response = client.poll_for_tx(&rx.hash).await.unwrap();
 
         assert!(response.height > 0);
+    }
+
+    #[tokio::test]
+    #[ignore = "requires local neutron grpc node active"]
+    async fn test_upload_wasm() {
+        let client = NeutronClient::new(
+            LOCAL_GRPC_URL,
+            LOCAL_GRPC_PORT,
+            LOCAL_MNEMONIC,
+            LOCAL_CHAIN_ID,
+        )
+        .await
+        .unwrap();
+
+        let authorizations_code = client
+            .upload_code("valence_authorization.wasm")
+            .await
+            .unwrap();
+        let processor_code = client.upload_code("valence_processor.wasm").await.unwrap();
+
+        assert_eq!(authorizations_code + 1, processor_code);
+
+        let code_info_response = client.query_code_info(authorizations_code).await.unwrap();
+        assert_eq!(
+            code_info_response.code_info.unwrap().code_id,
+            authorizations_code
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires local neutron grpc node active"]
+    async fn test_instantiate_wasm() {
+        let client = NeutronClient::new(
+            LOCAL_GRPC_URL,
+            LOCAL_GRPC_PORT,
+            LOCAL_MNEMONIC,
+            LOCAL_CHAIN_ID,
+        )
+        .await
+        .unwrap();
+
+        let authorizations_code = client
+            .upload_code("valence_authorization.wasm")
+            .await
+            .unwrap();
+
+        let instantiate_msg = json!({
+            "owner": LOCAL_PROCESSOR_ADDR,
+            "sub_owners": [],
+            "processor": LOCAL_PROCESSOR_ADDR.to_string(),
+        });
+        let authorizations_addr = client
+            .instantiate(
+                authorizations_code,
+                "authorizations_test".to_string(),
+                instantiate_msg,
+            )
+            .await
+            .unwrap();
+        assert!(authorizations_addr.starts_with("neutron"));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires local neutron grpc node active"]
+    async fn test_instantiate2_wasm() {
+        let client = NeutronClient::new(_GRPC_URL, _GRPC_PORT, _MNEMONIC, _CHAIN_ID)
+            .await
+            .unwrap();
+
+        let signing_client = client.get_signing_client().await.unwrap();
+
+        let base_acc_code = 3319;
+
+        let instantiate_msg = json!({
+            "admin": signing_client.address.to_string(),
+            "approved_libraries": [],
+        });
+
+        let salt = hex::encode(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                .to_string(),
+        );
+
+        let predicted_base_acc_addr = client
+            .predict_instantiate2_addr(
+                base_acc_code,
+                salt.clone(),
+                signing_client.address.to_string(),
+            )
+            .await
+            .unwrap()
+            .address;
+
+        let instantiated_base_acc_addr = client
+            .instantiate2(
+                base_acc_code,
+                "test_instantiate_2".to_string(),
+                instantiate_msg,
+                None,
+                salt,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(predicted_base_acc_addr, instantiated_base_acc_addr);
     }
 
     #[tokio::test]
