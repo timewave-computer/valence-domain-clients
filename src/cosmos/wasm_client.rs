@@ -115,9 +115,10 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             .map(|a| AccountId::from_str(&a))
             .transpose()
             .map_err(|e| StrategistError::ParseError(e.to_string()))?;
+
         let instantiate_tx = MsgInstantiateContract {
             sender: signing_client.address.clone(),
-            admin: admin,
+            admin,
             code_id,
             label: Some(label),
             msg: msg_bytes,
