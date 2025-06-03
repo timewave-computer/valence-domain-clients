@@ -6052,8 +6052,8 @@ dependencies = [
 
 [[package]]
 name = "valence-coprocessor"
-version = "0.2.1"
-source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.2.1#e689f98671bb2ca7e483a42c7a3d619725e51829"
+version = "0.2.2"
+source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.2.2#0a8c8eec90dd95bc9d4a4f89dcced1c9f877da0d"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6070,12 +6070,13 @@ dependencies = [
 
 [[package]]
 name = "valence-coprocessor-client"
-version = "0.2.1"
-source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.2.1#e689f98671bb2ca7e483a42c7a3d619725e51829"
+version = "0.2.2"
+source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.2.2#0a8c8eec90dd95bc9d4a4f89dcced1c9f877da0d"
 dependencies = [
  "anyhow",
  "hex",
  "reqwest 0.12.19",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",
