@@ -459,6 +459,7 @@ mod tests {
                 authorizations_code,
                 "authorizations_test".to_string(),
                 instantiate_msg,
+                None,
             )
             .await
             .unwrap();

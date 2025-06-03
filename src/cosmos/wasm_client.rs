@@ -74,9 +74,9 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         // poll the node until txhash resolves to a response
         let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
 
-        // filter abci logs to find the resulting code id
-        for abci_msg_log in query_tx_response.logs.iter() {
-            for event in abci_msg_log.events.iter() {
+        // filter events to find the resulting code id
+        for event in query_tx_response.events.iter() {
+            if event.r#type == "store_code" {
                 for attr in event.attributes.iter() {
                     if attr.key == "code_id" {
                         return attr.value.parse::<u64>().map_err(|_| {
@@ -89,7 +89,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         Err(StrategistError::ParseError(format!(
             "Failed to find code_id in transaction response: {:?}",
-            tx_response
+            query_tx_response
         )))
     }
 
@@ -98,6 +98,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         code_id: u64,
         label: String,
         msg: (impl Serialize + Send),
+        admin: Option<String>,
     ) -> Result<String, StrategistError> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
@@ -105,12 +106,19 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         let msg_bytes = serde_json::to_vec(&msg)?;
 
         if label.is_empty() {
-            return Err(StrategistError::TransactionError("contract label cannot be empty".to_string()))
+            return Err(StrategistError::TransactionError(
+                "contract label cannot be empty".to_string(),
+            ));
         }
+
+        let admin = admin
+            .map(|a| AccountId::from_str(&a))
+            .transpose()
+            .map_err(|e| StrategistError::ParseError(e.to_string()))?;
 
         let instantiate_tx = MsgInstantiateContract {
             sender: signing_client.address.clone(),
-            admin: None,
+            admin,
             code_id,
             label: Some(label),
             msg: msg_bytes,
@@ -138,14 +146,12 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         // poll the node until txhash resolves to a response
         let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
 
-        // filter abci logs to find the contract address
-        for abci_msg_log in query_tx_response.logs.iter() {
-            for event in abci_msg_log.events.iter() {
-                if event.r#type == "instantiate" || event.r#type == "instantiate_contract" {
-                    for attr in event.attributes.iter() {
-                        if attr.key == "_contract_address" || attr.key == "contract_address" {
-                            return Ok(attr.value.clone());
-                        }
+        // filter events to find the contract address
+        for event in query_tx_response.events.iter() {
+            if event.r#type == "instantiate" || event.r#type == "instantiate_contract" {
+                for attr in event.attributes.iter() {
+                    if attr.key == "_contract_address" || attr.key == "contract_address" {
+                        return Ok(attr.value.clone());
                     }
                 }
             }
@@ -222,11 +228,13 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         let sender = signing_client.address.to_string();
 
         if label.is_empty() {
-            return Err(StrategistError::TransactionError("contract label cannot be empty".to_string()))
+            return Err(StrategistError::TransactionError(
+                "contract label cannot be empty".to_string(),
+            ));
         }
 
         let instantiate_contract2_msg = MsgInstantiateContract2 {
-            admin: admin.unwrap_or(sender.to_string()),
+            admin: admin.unwrap_or_default(),
             sender,
             code_id,
             label,
@@ -265,7 +273,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         // poll the node until txhash resolves to a response
         let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
 
-        // filter abci logs to find the contract address
+        // filter events to find the contract address
         for event in query_tx_response.events.iter() {
             for event_attr in event.attributes.iter() {
                 if event_attr.key == "_contract_address" {
