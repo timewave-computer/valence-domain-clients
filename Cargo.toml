@@ -12,6 +12,7 @@ test-utils = []
 
 [dependencies]
 # generic imports
+anyhow      = "1.0.83"
 tokio       = "1.43.0"
 async-trait = "0.1.77"
 serde              = { version = "1.0.207", default-features = false, features = ["derive"] }
@@ -28,6 +29,10 @@ tonic                   = { version = "0.12.3", features = ["transport"] }
 hex                     = "0.4.3"
 neutron-std             = "5.1.2"
 ibc                     = "0.57.0"
+
+# coprocessor-specific imports
+valence-coprocessor        = { git = "https://github.com/timewave-computer/valence-coprocessor.git", tag = "v0.2.2" }
+valence-coprocessor-client = { git = "https://github.com/timewave-computer/valence-coprocessor.git", tag = "v0.2.2" }
 
 # evm-specific imports
 alloy_signer_local = { package = "alloy-signer-local", version = "0.9.2", features = [
