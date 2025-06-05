@@ -1,6 +1,10 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use valence_coprocessor::{Proof, ValidatedDomainBlock, Witness};
+use valence_coprocessor_domain_prover::{
+    valence_coprocessor::{ValidatedDomainBlock, Witness},
+    valence_coprocessor_client::AddedDomainBlock,
+    Proof,
+};
 
 #[async_trait]
 pub trait CoprocessorBaseClient {
@@ -46,5 +50,9 @@ pub trait CoprocessorBaseClient {
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<ValidatedDomainBlock>;
 
     /// Appends a block to the domain, validating it with the controller.
-    async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value>;
+    async fn add_domain_block(
+        &self,
+        domain: &str,
+        args: &Value,
+    ) -> anyhow::Result<AddedDomainBlock>;
 }

@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use valence_coprocessor::{Proof, ValidatedDomainBlock, Witness};
-use valence_coprocessor_client::Client;
+use valence_coprocessor_domain_prover::{
+    valence_coprocessor::{ValidatedDomainBlock, Witness},
+    valence_coprocessor_client::{AddedDomainBlock, Client},
+    Proof,
+};
 
 use crate::coprocessor::base_client::CoprocessorBaseClient;
 
@@ -52,7 +55,7 @@ impl CoprocessorBaseClient for CoprocessorClient {
     }
 
     async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<Proof> {
-        self.client.prove(circuit, args).await
+        Proof::prove(&self.client, circuit, args).await
     }
 
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>> {
@@ -67,7 +70,11 @@ impl CoprocessorBaseClient for CoprocessorClient {
         self.client.get_latest_domain_block(domain).await
     }
 
-    async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value> {
+    async fn add_domain_block(
+        &self,
+        domain: &str,
+        args: &Value,
+    ) -> anyhow::Result<AddedDomainBlock> {
         self.client.add_domain_block(domain, args).await
     }
 }
@@ -120,10 +127,15 @@ async fn client_prove_works() {
     let circuit = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
     let args = serde_json::json!({"value": 42});
 
-    CoprocessorClient::default()
+    let proof = CoprocessorClient::default()
         .prove(circuit, &args)
         .await
         .unwrap();
+
+    let program = proof.program.decode().unwrap().1;
+    let domain = proof.domain.decode().unwrap().1;
+
+    assert_eq!(&program[..32], &domain[..32]);
 }
 
 #[tokio::test]
