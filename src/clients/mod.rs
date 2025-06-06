@@ -2,6 +2,7 @@ pub mod babylon;
 pub mod coprocessor;
 pub mod ethereum;
 pub mod gaia;
+pub mod ibc_eureka_route_client;
 pub mod neutron;
 pub mod noble;
 pub mod osmosis;
