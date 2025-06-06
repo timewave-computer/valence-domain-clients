@@ -1,6 +1,10 @@
 use async_trait::async_trait;
 use serde_json::Value;
-use valence_coprocessor::{Proof, ValidatedDomainBlock, Witness};
+use valence_coprocessor_domain_prover::{
+    valence_coprocessor::{ValidatedDomainBlock, Witness},
+    valence_coprocessor_client::AddedDomainBlock,
+    Proof,
+};
 
 #[async_trait]
 pub trait CoprocessorBaseClient {
@@ -39,6 +43,11 @@ pub trait CoprocessorBaseClient {
     /// Get the verifying key for the provided circuit
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>>;
 
+    /// Get the verifying key for the domain circuit
+    async fn get_domain_vk(&self) -> anyhow::Result<Vec<u8>> {
+        self.get_vk(Proof::DOMAIN_CIRCUIT).await
+    }
+
     /// Calls the controller entrypoint
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value>;
 
@@ -46,5 +55,9 @@ pub trait CoprocessorBaseClient {
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<ValidatedDomainBlock>;
 
     /// Appends a block to the domain, validating it with the controller.
-    async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value>;
+    async fn add_domain_block(
+        &self,
+        domain: &str,
+        args: &Value,
+    ) -> anyhow::Result<AddedDomainBlock>;
 }
