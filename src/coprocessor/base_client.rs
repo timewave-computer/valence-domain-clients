@@ -43,6 +43,11 @@ pub trait CoprocessorBaseClient {
     /// Get the verifying key for the provided circuit
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>>;
 
+    /// Get the verifying key for the domain circuit
+    async fn get_domain_vk(&self) -> anyhow::Result<Vec<u8>> {
+        self.get_vk(Proof::DOMAIN_CIRCUIT).await
+    }
+
     /// Calls the controller entrypoint
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value>;
 
