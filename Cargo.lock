@@ -6052,8 +6052,8 @@ dependencies = [
 
 [[package]]
 name = "valence-coprocessor"
-version = "0.2.3"
-source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.2.3#f4934a104d9a4c279dfa8156d47013e55aa1d799"
+version = "0.3.1"
+source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.3.1#cefeac69e40ebd86cafebb3ade47f0f9e75b6061"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6070,8 +6070,8 @@ dependencies = [
 
 [[package]]
 name = "valence-coprocessor-client"
-version = "0.2.3"
-source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.2.3#f4934a104d9a4c279dfa8156d47013e55aa1d799"
+version = "0.3.1"
+source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.3.1#cefeac69e40ebd86cafebb3ade47f0f9e75b6061"
 dependencies = [
  "anyhow",
  "hex",
@@ -6086,8 +6086,8 @@ dependencies = [
 
 [[package]]
 name = "valence-coprocessor-domain-prover"
-version = "0.2.0"
-source = "git+https://github.com/timewave-computer/valence-coprocessor-domain-prover.git?tag=v0.2.0#026f6ac1119f03fa5e609f6f6696f98ea0f262ee"
+version = "0.3.1"
+source = "git+https://github.com/timewave-computer/valence-coprocessor-domain-prover.git?tag=v0.3.1#926121faa8e62e4af22a050656ac32918f807e40"
 dependencies = [
  "anyhow",
  "hex",
