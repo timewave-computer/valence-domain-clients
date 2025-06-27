@@ -31,7 +31,7 @@ neutron-std             = "5.1.2"
 ibc                     = "0.57.0"
 
 # coprocessor-specific imports
-valence-coprocessor-domain-prover = { git = "https://github.com/timewave-computer/valence-coprocessor-domain-prover.git", tag = "v0.2.0" }
+valence-coprocessor-domain-prover = { git = "https://github.com/timewave-computer/valence-coprocessor-domain-prover.git", tag = "v0.3.1" }
 
 # evm-specific imports
 alloy_signer_local = { package = "alloy-signer-local", version = "0.9.2", features = [
