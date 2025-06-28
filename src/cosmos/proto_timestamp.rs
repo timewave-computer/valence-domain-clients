@@ -40,7 +40,7 @@ impl From<cosmos_sdk_proto::Timestamp> for ProtoTimestamp {
 impl TryFrom<Header> for ProtoTimestamp {
     type Error = anyhow::Error;
 
-    fn try_from(value: Header) -> anyhow::Result<Self, Self::Error> {
+    fn try_from(value: Header) -> anyhow::Result<Self> {
         let proto_time = value
             .time
             .ok_or_else(|| anyhow::anyhow!("No time in block header"))?

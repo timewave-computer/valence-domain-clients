@@ -109,7 +109,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         let admin = admin
             .map(|a| AccountId::from_str(&a))
             .transpose()
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            .map_err(|e| anyhow::anyhow!("failed to get AccountId from str: {e}"))?;
 
         let instantiate_tx = MsgInstantiateContract {
             sender: signing_client.address.clone(),
@@ -228,7 +228,8 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             label,
             msg: msg_bytes,
             funds: vec![],
-            salt: hex::decode(salt).map_err(|e| anyhow::anyhow!(e.to_string()))?,
+            salt: hex::decode(salt)
+                .map_err(|e| anyhow::anyhow!("failed to decode hex salt: {e}"))?,
             fix_msg: false,
         };
 
