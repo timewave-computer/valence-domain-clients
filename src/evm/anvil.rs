@@ -5,29 +5,29 @@ use alloy::rpc::types::{TransactionReceipt, TransactionRequest};
 use std::str::FromStr;
 use tonic::async_trait;
 
-use crate::common::error::StrategistError;
 use crate::evm::base_client::EvmBaseClient;
 
 /// Extension trait to add Anvil impersonation capabilities
 #[async_trait]
 pub trait AnvilImpersonationClient: EvmBaseClient {
     /// Start impersonating an account - calls anvil_impersonateAccount
-    async fn impersonate_account(&self, address: &str) -> Result<(), StrategistError> {
+    async fn impersonate_account(&self, address: &str) -> anyhow::Result<()> {
         let client = self.get_request_provider().await?;
 
         // Convert string address to Address type
         let addr = Address::from_str(address)?;
 
         // Call the Anvil-specific RPC method
-        client.anvil_impersonate_account(addr).await.map_err(|e| {
-            StrategistError::ClientError(format!("Failed to impersonate account: {}", e))
-        })?;
+        client
+            .anvil_impersonate_account(addr)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to impersonate account: {e}"))?;
 
         Ok(())
     }
 
     /// Stop impersonating an account - calls anvil_stopImpersonatingAccount
-    async fn stop_impersonating_account(&self, address: &str) -> Result<(), StrategistError> {
+    async fn stop_impersonating_account(&self, address: &str) -> anyhow::Result<()> {
         let client = self.get_request_provider().await?;
 
         // Convert string address to Address type
@@ -37,9 +37,7 @@ pub trait AnvilImpersonationClient: EvmBaseClient {
         client
             .anvil_stop_impersonating_account(addr)
             .await
-            .map_err(|e| {
-                StrategistError::ClientError(format!("Failed to stop impersonating account: {}", e))
-            })?;
+            .map_err(|e| anyhow::anyhow!("Failed to stop impersonating account: {e}"))?;
 
         Ok(())
     }
@@ -49,7 +47,7 @@ pub trait AnvilImpersonationClient: EvmBaseClient {
         &self,
         from_address: &str,
         tx: TransactionRequest,
-    ) -> Result<TransactionReceipt, StrategistError> {
+    ) -> anyhow::Result<TransactionReceipt> {
         let client = self.get_request_provider().await?;
 
         // Convert string address to Address type

@@ -3,7 +3,7 @@ use log::info;
 use tonic::async_trait;
 
 use crate::{
-    common::{error::StrategistError, transaction::TransactionResponse},
+    common::transaction::TransactionResponse,
     cosmos::{base_client::BaseClient, grpc_client::GrpcSigningClient, CosmosServiceClient},
 };
 
@@ -31,7 +31,7 @@ impl NobleClient {
         mnemonic: &str,
         chain_id: &str,
         chain_denom: &str,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let avg_gas_price = Self::query_chain_gas_config("noble", CHAIN_DENOM).await?;
 
         Ok(Self {
@@ -113,7 +113,7 @@ impl NobleClient {
         receiver: &str,
         amount: &str,
         denom: &str,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
 
         let mint_msg = MsgMint {
@@ -146,7 +146,7 @@ impl NobleClient {
         sender: &str,
         controller: &str,
         minter: &str,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
 
         let configure_minter_controller_msg = MsgConfigureMinterController {
@@ -177,7 +177,7 @@ impl NobleClient {
         address: &str,
         allowance: &str,
         denom: &str,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
 
         let configure_minter_msg = MsgConfigureMinter {
@@ -210,7 +210,7 @@ impl NobleClient {
         signer: &str,
         domain_id: u32,
         address: &[u8],
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
 
         let add_remote_token_messenger_msg = MsgAddRemoteTokenMessenger {
@@ -241,7 +241,7 @@ impl NobleClient {
         remote_domain: u32,
         remote_token: &[u8],
         local_token: &str,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
 
         let link_token_pair_msg = MsgLinkTokenPair {

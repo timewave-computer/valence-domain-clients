@@ -9,7 +9,7 @@ use cosmrs::{cosmwasm::MsgInstantiateContract, tx::Fee, Any, Coin};
 use prost::{Message, Name};
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::common::{error::StrategistError, transaction::TransactionResponse};
+use crate::common::transaction::TransactionResponse;
 use tonic::Request;
 
 use super::{
@@ -29,19 +29,18 @@ use cosmrs::{
 /// these function definitions can be overridden to match that of the chain.
 #[async_trait]
 pub trait WasmClient: GrpcSigningClient + BaseClient {
-    async fn upload_code(&self, wasm_path: &str) -> Result<u64, StrategistError> {
+    async fn upload_code(&self, wasm_path: &str) -> anyhow::Result<u64> {
         // 1. load the wasm from storage
         let wasm_path = Path::new(wasm_path);
         if !wasm_path.exists() {
-            return Err(StrategistError::ClientError(format!(
+            return Err(anyhow::anyhow!(
                 "WASM file not found at path: {}",
                 wasm_path.display()
-            )));
+            ));
         }
 
-        let wasm_bytes = fs::read(wasm_path).map_err(|e| {
-            StrategistError::ClientError(format!("Failed to read WASM file: {}", e))
-        })?;
+        let wasm_bytes =
+            fs::read(wasm_path).map_err(|e| anyhow::anyhow!("Failed to read WASM file: {}", e))?;
 
         // 2. upload the wasm to the chain
         let signing_client = self.get_signing_client().await?;
@@ -52,7 +51,8 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             wasm_byte_code: wasm_bytes,
             instantiate_permission: None,
         }
-        .to_any()?;
+        .to_any()
+        .map_err(|e| anyhow::anyhow!("failed to convert MsgStoreCode to proto Any: {e}"))?;
 
         let simulation_response = self.simulate_tx(store_code_msg.clone()).await?;
         let fee = self.get_tx_fee(simulation_response)?;
@@ -64,11 +64,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         let tx_response = match &broadcast_tx_response.tx_response {
             Some(response) => response,
-            None => {
-                return Err(StrategistError::TransactionError(
-                    "No transaction response returned".to_string(),
-                ))
-            }
+            None => return Err(anyhow::anyhow!("No transaction response returned")),
         };
 
         // poll the node until txhash resolves to a response
@@ -79,18 +75,19 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             if event.r#type == "store_code" {
                 for attr in event.attributes.iter() {
                     if attr.key == "code_id" {
-                        return attr.value.parse::<u64>().map_err(|_| {
-                            StrategistError::ParseError("Failed to parse code_id".to_string())
-                        });
+                        return attr
+                            .value
+                            .parse::<u64>()
+                            .map_err(|_| anyhow::anyhow!("Failed to parse code_id"));
                     }
                 }
             }
         }
 
-        Err(StrategistError::ParseError(format!(
+        Err(anyhow::anyhow!(
             "Failed to find code_id in transaction response: {:?}",
             query_tx_response
-        )))
+        ))
     }
 
     async fn instantiate(
@@ -99,22 +96,20 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         label: String,
         msg: (impl Serialize + Send),
         admin: Option<String>,
-    ) -> Result<String, StrategistError> {
+    ) -> anyhow::Result<String> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
 
         let msg_bytes = serde_json::to_vec(&msg)?;
 
         if label.is_empty() {
-            return Err(StrategistError::TransactionError(
-                "contract label cannot be empty".to_string(),
-            ));
+            return Err(anyhow::anyhow!("contract label cannot be empty"));
         }
 
         let admin = admin
             .map(|a| AccountId::from_str(&a))
             .transpose()
-            .map_err(|e| StrategistError::ParseError(e.to_string()))?;
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let instantiate_tx = MsgInstantiateContract {
             sender: signing_client.address.clone(),
@@ -124,7 +119,10 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             msg: msg_bytes,
             funds: vec![],
         }
-        .to_any()?;
+        .to_any()
+        .map_err(|e| {
+            anyhow::anyhow!("failed to convert MsgInstantiateContract to proto Any: {e}")
+        })?;
 
         let simulation_response = self.simulate_tx(instantiate_tx.clone()).await?;
         let fee = self.get_tx_fee(simulation_response)?;
@@ -136,11 +134,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         let tx_response = match &broadcast_tx_response.tx_response {
             Some(response) => response,
-            None => {
-                return Err(StrategistError::TransactionError(
-                    "No transaction response returned".to_string(),
-                ))
-            }
+            None => return Err(anyhow::anyhow!("No transaction response returned")),
         };
 
         // poll the node until txhash resolves to a response
@@ -157,13 +151,13 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             }
         }
 
-        Err(StrategistError::ParseError(format!(
+        Err(anyhow::anyhow!(
             "Failed to find contract address in transaction response: {:?}",
             query_tx_response
-        )))
+        ))
     }
 
-    async fn query_code_info(&self, code_id: u64) -> Result<QueryCodeResponse, StrategistError> {
+    async fn query_code_info(&self, code_id: u64) -> anyhow::Result<QueryCodeResponse> {
         let channel = self.get_grpc_channel().await?;
 
         let mut grpc_client = WasmQueryClient::new(channel);
@@ -180,16 +174,12 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         code_id: u64,
         salt: String,
         creator: String,
-    ) -> Result<QueryBuildAddressResponse, StrategistError> {
+    ) -> anyhow::Result<QueryBuildAddressResponse> {
         let code_info = self.query_code_info(code_id).await?.code_info;
 
         let code_id_hash = match code_info {
             Some(ci) => ci.data_hash,
-            None => {
-                return Err(StrategistError::TransactionError(
-                    "failed to get code info from code query".to_string(),
-                ))
-            }
+            None => return Err(anyhow::anyhow!("failed to get code info from code query")),
         };
 
         let channel = self.get_grpc_channel().await?;
@@ -219,7 +209,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         msg: (impl Serialize + Send),
         admin: Option<String>,
         salt: String,
-    ) -> Result<String, StrategistError> {
+    ) -> anyhow::Result<String> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
 
@@ -228,9 +218,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         let sender = signing_client.address.to_string();
 
         if label.is_empty() {
-            return Err(StrategistError::TransactionError(
-                "contract label cannot be empty".to_string(),
-            ));
+            return Err(anyhow::anyhow!("contract label cannot be empty"));
         }
 
         let instantiate_contract2_msg = MsgInstantiateContract2 {
@@ -240,7 +228,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             label,
             msg: msg_bytes,
             funds: vec![],
-            salt: hex::decode(salt).map_err(|e| StrategistError::ParseError(e.to_string()))?,
+            salt: hex::decode(salt).map_err(|e| anyhow::anyhow!(e.to_string()))?,
             fix_msg: false,
         };
 
@@ -264,11 +252,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         let tx_response = match &broadcast_tx_response.tx_response {
             Some(response) => response,
-            None => {
-                return Err(StrategistError::TransactionError(
-                    "No transaction response returned".to_string(),
-                ))
-            }
+            None => return Err(anyhow::anyhow!("No transaction response returned")),
         };
         // poll the node until txhash resolves to a response
         let query_tx_response = self.poll_for_tx(&tx_response.txhash).await?;
@@ -282,17 +266,17 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
             }
         }
 
-        Err(StrategistError::ParseError(format!(
+        Err(anyhow::anyhow!(
             "Failed to find contract address in transaction response: {:?}",
             query_tx_response
-        )))
+        ))
     }
 
     async fn query_contract_state<T: DeserializeOwned>(
         &self,
         contract_address: &str,
         query_data: (impl Serialize + Send),
-    ) -> Result<T, StrategistError> {
+    ) -> anyhow::Result<T> {
         let channel = self.get_grpc_channel().await?;
 
         let mut grpc_client = WasmQueryClient::new(channel);
@@ -320,7 +304,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         msg: (impl Serialize + Send),
         funds: Vec<Coin>,
         fees: Option<Fee>,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
 
@@ -328,11 +312,14 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         let wasm_tx = MsgExecuteContract {
             sender: signing_client.address.clone(),
-            contract: AccountId::from_str(contract)?,
+            contract: AccountId::from_str(contract).map_err(|e| {
+                anyhow::anyhow!("failed to parse contract addr into AccountId: {e}")
+            })?,
             msg: msg_bytes,
             funds,
         }
-        .to_any()?;
+        .to_any()
+        .map_err(|e| anyhow::anyhow!("failed to convert MsgExecuteContract to proto Any: {e}"))?;
 
         let simulation_response = self.simulate_tx(wasm_tx.clone()).await?;
 
@@ -347,7 +334,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
 
         match broadcast_tx_response.tx_response {
             Some(tx_response) => Ok(TransactionResponse::try_from(tx_response)?),
-            None => Err(StrategistError::TransactionError("failed".to_string())),
+            None => Err(anyhow::anyhow!("failed")),
         }
     }
 }

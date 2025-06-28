@@ -1,7 +1,5 @@
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 
-use super::error::StrategistError;
-
 #[derive(Debug)]
 pub struct TransactionResponse {
     pub hash: String,
@@ -11,9 +9,9 @@ pub struct TransactionResponse {
 }
 
 impl TryFrom<TxResponse> for TransactionResponse {
-    type Error = StrategistError;
+    type Error = anyhow::Error;
 
-    fn try_from(value: TxResponse) -> Result<Self, Self::Error> {
+    fn try_from(value: TxResponse) -> anyhow::Result<Self> {
         Ok(Self {
             hash: value.txhash,
             success: value.code == 0, // 0 is success
@@ -24,14 +22,12 @@ impl TryFrom<TxResponse> for TransactionResponse {
 }
 
 impl TryFrom<Option<TxResponse>> for TransactionResponse {
-    type Error = StrategistError;
+    type Error = anyhow::Error;
 
-    fn try_from(value: Option<TxResponse>) -> Result<Self, Self::Error> {
+    fn try_from(value: Option<TxResponse>) -> anyhow::Result<Self> {
         match value {
             Some(tx) => Self::try_from(tx),
-            None => Err(StrategistError::TransactionError(
-                "failed to find tx_response".to_string(),
-            )),
+            None => Err(anyhow::anyhow!("failed to find tx_response".to_string(),)),
         }
     }
 }
