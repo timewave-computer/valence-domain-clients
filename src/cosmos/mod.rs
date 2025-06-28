@@ -1,5 +1,4 @@
 pub mod base_client;
-pub mod errors;
 pub mod grpc_client;
 pub mod proto_timestamp;
 pub mod signing_client;

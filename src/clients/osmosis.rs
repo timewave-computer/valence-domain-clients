@@ -1,8 +1,7 @@
 use tonic::async_trait;
 
-use crate::{
-    common::error::StrategistError,
-    cosmos::{base_client::BaseClient, grpc_client::GrpcSigningClient, wasm_client::WasmClient},
+use crate::cosmos::{
+    base_client::BaseClient, grpc_client::GrpcSigningClient, wasm_client::WasmClient,
 };
 
 const CHAIN_PREFIX: &str = "osmo";
@@ -24,7 +23,7 @@ impl OsmosisClient {
         rpc_port: &str,
         mnemonic: &str,
         chain_id: &str,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let avg_gas_price = Self::query_chain_gas_config("osmosis", CHAIN_DENOM).await?;
 
         Ok(Self {

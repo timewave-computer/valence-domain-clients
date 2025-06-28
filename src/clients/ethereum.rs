@@ -1,4 +1,3 @@
-use crate::common::error::StrategistError;
 use crate::evm::base_client::EvmBaseClient;
 use crate::evm::request_provider_client::RequestProviderClient;
 
@@ -16,7 +15,7 @@ impl EthereumClient {
         rpc_url: &str,
         mnemonic: &str,
         mnemonic_derivation_index: Option<u32>,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let builder = MnemonicBuilder::<English>::default().phrase(mnemonic);
 
         let derivation_index = mnemonic_derivation_index.unwrap_or_default();

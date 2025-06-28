@@ -10,8 +10,6 @@ use cosmrs::{
 };
 use tonic::transport::Channel;
 
-use crate::common::error::StrategistError;
-
 use super::AuthQueryClient;
 
 const DERIVATION_PATH: &str = "m/44'/118'/0'/0/0";
@@ -34,7 +32,7 @@ impl SigningClient {
         mnemonic: &str,
         prefix: &str,
         chain_id: &str,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
 
         let seed = mnemonic.to_seed("");
@@ -42,7 +40,9 @@ impl SigningClient {
         let signing_key = SigningKey::derive_from_path(seed, &DERIVATION_PATH.parse()?)?;
 
         let public_key = signing_key.public_key();
-        let sender_account_id = public_key.account_id(prefix)?;
+        let sender_account_id = public_key
+            .account_id(prefix)
+            .map_err(|e| anyhow::anyhow!("Failed to get account ID: {e}"))?;
 
         let mut client = AuthQueryClient::new(channel);
 
@@ -55,7 +55,7 @@ impl SigningClient {
 
         let base_account = account_info_resp
             .info
-            .ok_or_else(|| StrategistError::QueryError("failed to get base account".to_string()))?;
+            .ok_or_else(|| anyhow::anyhow!("failed to get base account"))?;
 
         Ok(SigningClient {
             signing_key,
@@ -73,7 +73,7 @@ impl SigningClient {
         msg: Any,
         fee: Fee,
         memo: Option<&str>,
-    ) -> Result<BroadcastTxRequest, StrategistError> {
+    ) -> anyhow::Result<BroadcastTxRequest> {
         let tx_body = tx::BodyBuilder::new()
             .msg(msg)
             .memo(memo.unwrap_or_default())
@@ -85,14 +85,22 @@ impl SigningClient {
         let sign_doc = SignDoc::new(
             &tx_body,
             &auth_info,
-            &self.chain_id.parse()?,
+            &self
+                .chain_id
+                .parse()
+                .map_err(|e| anyhow::anyhow!("Failed to parse chain ID: {e}"))?,
             self.account_number,
-        )?;
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to create sign doc: {e}"))?;
 
-        let tx_raw = sign_doc.sign(&self.signing_key)?;
+        let tx_raw = sign_doc
+            .sign(&self.signing_key)
+            .map_err(|e| anyhow::anyhow!("Failed to sign transaction: {e}"))?;
 
         let broadcast_tx_request = BroadcastTxRequest {
-            tx_bytes: tx_raw.to_bytes()?,
+            tx_bytes: tx_raw
+                .to_bytes()
+                .map_err(|e| anyhow::anyhow!("Failed to convert tx to bytes: {e}"))?,
             mode: BroadcastMode::Sync.into(),
         };
 
