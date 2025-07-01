@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use crate::common::error::StrategistError;
 use alloy::contract::{CallBuilder, CallDecoder};
 use alloy::network::{Ethereum, TransactionBuilder};
 use alloy::network::{EthereumWallet, Network};
@@ -36,7 +35,7 @@ pub trait EvmQueryRequest: Clone {
     fn get_tx_request(&self) -> TransactionRequest;
 
     /// decode the raw bytes of the EVM call into the output type
-    fn decode_response(&self, bytes: Bytes) -> Result<Self::Output, StrategistError>;
+    fn decode_response(&self, bytes: Bytes) -> anyhow::Result<Self::Output>;
 }
 
 // this is a bit loaded but I couldn't find a way around it if we want to
@@ -57,7 +56,7 @@ where
         self.clone().into_transaction_request().into()
     }
 
-    fn decode_response(&self, raw: Bytes) -> Result<Self::Output, StrategistError> {
+    fn decode_response(&self, raw: Bytes) -> anyhow::Result<Self::Output> {
         let resp = self.decode_output(raw, true)?;
         Ok(resp)
     }
@@ -69,7 +68,7 @@ where
 /// these function definitions can be overridden to match the custom chain logic.
 #[async_trait]
 pub trait EvmBaseClient: RequestProviderClient {
-    async fn latest_block_height(&self) -> Result<u64, StrategistError> {
+    async fn latest_block_height(&self) -> anyhow::Result<u64> {
         let client = self.get_request_provider().await?;
 
         let block = client.get_block_number().await?;
@@ -77,7 +76,7 @@ pub trait EvmBaseClient: RequestProviderClient {
         Ok(block)
     }
 
-    async fn query_balance(&self, address: &str) -> Result<U256, StrategistError> {
+    async fn query_balance(&self, address: &str) -> anyhow::Result<U256> {
         let client = self.get_request_provider().await?;
 
         let addr = Address::from_str(address)?;
@@ -86,10 +85,7 @@ pub trait EvmBaseClient: RequestProviderClient {
         Ok(balance)
     }
 
-    async fn execute_tx(
-        &self,
-        tx: TransactionRequest,
-    ) -> Result<TransactionReceipt, StrategistError> {
+    async fn execute_tx(&self, tx: TransactionRequest) -> anyhow::Result<TransactionReceipt> {
         let client = self.get_request_provider().await?;
 
         let signed_tx = tx.from(self.signer().address());
@@ -103,10 +99,7 @@ pub trait EvmBaseClient: RequestProviderClient {
         Ok(tx_response)
     }
 
-    async fn sign_and_send(
-        &self,
-        tx: TransactionRequest,
-    ) -> Result<TransactionReceipt, StrategistError> {
+    async fn sign_and_send(&self, tx: TransactionRequest) -> anyhow::Result<TransactionReceipt> {
         let wallet = EthereumWallet::from(self.signer());
         let rp = self.get_request_provider().await?;
 
@@ -118,15 +111,14 @@ pub trait EvmBaseClient: RequestProviderClient {
         let tx_request = match rp.fill(tx_with_nonce_and_sender).await?.as_builder() {
             Some(tx_request) => tx_request.clone(),
             None => {
-                return Err(StrategistError::TransactionError(
-                    "Failed to fill transaction request".to_string(),
-                ));
+                return Err(anyhow::anyhow!("Failed to fill transaction request"));
             }
         };
         // Sign the transaction
-        let tx_envelope = tx_request.build(&wallet).await.map_err(|e| {
-            StrategistError::TransactionError(format!("Failed to sign transaction: {}", e))
-        })?;
+        let tx_envelope = tx_request
+            .build(&wallet)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to sign transaction: {}", e))?;
         // Send the transaction
         let tx_hash = rp
             .send_tx_envelope(tx_envelope)
@@ -137,10 +129,7 @@ pub trait EvmBaseClient: RequestProviderClient {
         Ok(tx_hash)
     }
 
-    async fn query<Q: EvmQueryRequest + Send>(
-        &self,
-        builder: Q,
-    ) -> Result<Q::Output, StrategistError> {
+    async fn query<Q: EvmQueryRequest + Send>(&self, builder: Q) -> anyhow::Result<Q::Output> {
         let client = self.get_request_provider().await?;
 
         let tx_request: TransactionRequest = builder.get_tx_request();
@@ -158,7 +147,7 @@ pub trait EvmBaseClient: RequestProviderClient {
         predicate: F, // assertion fn on the response type
         interval_sec: u64,
         max_attempts: u32,
-    ) -> Result<Q::Output, StrategistError>
+    ) -> anyhow::Result<Q::Output>
     where
         Q: EvmQueryRequest + Send,
         F: Fn(&Q::Output) -> bool + Send,
@@ -185,8 +174,8 @@ pub trait EvmBaseClient: RequestProviderClient {
             }
         }
 
-        Err(StrategistError::QueryError(
-            "blocking query failed after max attempts; condition not met".to_string(),
+        Err(anyhow::anyhow!(
+            "blocking query failed after max attempts; condition not met"
         ))
     }
 }

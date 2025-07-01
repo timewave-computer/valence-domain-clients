@@ -6,8 +6,6 @@ use alloy::{
 use alloy_signer_local::PrivateKeySigner;
 use tonic::async_trait;
 
-use crate::common::error::StrategistError;
-
 use super::base_client::CustomProvider;
 
 /// trait for evm-based clients to enable signing and request provider functionality.
@@ -18,11 +16,11 @@ pub trait RequestProviderClient {
     fn rpc_url(&self) -> String;
     fn signer(&self) -> PrivateKeySigner;
 
-    async fn get_request_provider(&self) -> Result<CustomProvider, StrategistError> {
+    async fn get_request_provider(&self) -> anyhow::Result<CustomProvider> {
         let url: reqwest::Url = self
             .rpc_url()
             .parse()
-            .map_err(|_| StrategistError::ParseError("failed to parse url".to_string()))?;
+            .map_err(|_| anyhow::anyhow!("failed to parse url"))?;
 
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
@@ -31,7 +29,7 @@ pub trait RequestProviderClient {
         Ok(provider)
     }
 
-    async fn get_provider_accounts(&self) -> Result<Vec<Address>, StrategistError> {
+    async fn get_provider_accounts(&self) -> anyhow::Result<Vec<Address>> {
         let provider = self.get_request_provider().await?;
         let accounts = provider.get_accounts().await?;
         Ok(accounts)

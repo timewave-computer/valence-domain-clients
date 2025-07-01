@@ -6,8 +6,6 @@ use cosmrs::{
 };
 use tonic::{async_trait, transport::Channel};
 
-use crate::common::error::StrategistError;
-
 use super::{signing_client::SigningClient, CosmosServiceClient};
 
 /// grpc signing client trait to enable transaction signing and grpc channel opening.
@@ -25,9 +23,9 @@ pub trait GrpcSigningClient {
 
     /// opens and returns a grpc channel associated with the grpc url of the
     /// implementing client
-    async fn get_grpc_channel(&self) -> Result<Channel, StrategistError> {
+    async fn get_grpc_channel(&self) -> anyhow::Result<Channel> {
         let channel = Channel::from_shared(self.grpc_url())
-            .map_err(|_| StrategistError::ClientError("failed to build channel".to_string()))?
+            .map_err(|_| anyhow::anyhow!("failed to build channel"))?
             .connect()
             .await?;
 
@@ -35,7 +33,7 @@ pub trait GrpcSigningClient {
     }
 
     /// returns a signing client associated with the implementing client config
-    async fn get_signing_client(&self) -> Result<SigningClient, StrategistError> {
+    async fn get_signing_client(&self) -> anyhow::Result<SigningClient> {
         let channel = self.get_grpc_channel().await?;
 
         SigningClient::from_mnemonic(
@@ -47,7 +45,7 @@ pub trait GrpcSigningClient {
         .await
     }
 
-    fn get_tx_fee(&self, simulation_response: SimulateResponse) -> Result<Fee, StrategistError> {
+    fn get_tx_fee(&self, simulation_response: SimulateResponse) -> anyhow::Result<Fee> {
         let gas_used = simulation_response
             .gas_info
             .map(|info| info.gas_used)
@@ -56,7 +54,10 @@ pub trait GrpcSigningClient {
         let adjusted_gas_limit = gas_used as f64 * self.gas_adjustment();
 
         let coin_amount = Coin {
-            denom: self.chain_denom().parse()?,
+            denom: self
+                .chain_denom()
+                .parse()
+                .map_err(|e| anyhow::anyhow!("failed to parse chain denom {e}"))?,
             amount: (adjusted_gas_limit * self.gas_price()) as u128 + 1,
         };
         let gas_limit = adjusted_gas_limit as u64;
@@ -65,7 +66,7 @@ pub trait GrpcSigningClient {
     }
 
     /// simulates a transaction with the given message.
-    async fn simulate_tx(&self, msg: Any) -> Result<SimulateResponse, StrategistError> {
+    async fn simulate_tx(&self, msg: Any) -> anyhow::Result<SimulateResponse> {
         let channel = self.get_grpc_channel().await?;
         let signer = self.get_signing_client().await?;
 
@@ -75,7 +76,10 @@ pub trait GrpcSigningClient {
         let auth_info = SignerInfo::single_direct(Some(signer.public_key), signer.sequence)
             .auth_info(cosmrs::tx::Fee::from_amount_and_gas(
                 Coin {
-                    denom: self.chain_denom().parse()?,
+                    denom: self
+                        .chain_denom()
+                        .parse()
+                        .map_err(|e| anyhow::anyhow!("failed to parse chain denom {e}"))?,
                     amount: 0,
                 },
                 0u64,
@@ -86,15 +90,20 @@ pub trait GrpcSigningClient {
             &auth_info,
             &signer.chain_id.parse()?,
             signer.account_number,
-        )?;
+        )
+        .map_err(|e| anyhow::anyhow!("failed to set up sign doc: {e}"))?;
 
-        let tx_raw = sign_doc.sign(&signer.signing_key)?;
+        let tx_raw = sign_doc
+            .sign(&signer.signing_key)
+            .map_err(|e| anyhow::anyhow!("failed to sign tx with configured signer {e}"))?;
 
         #[allow(deprecated)]
         let request = SimulateRequest {
             // tx is deprecated so always None
             tx: None,
-            tx_bytes: tx_raw.to_bytes()?,
+            tx_bytes: tx_raw
+                .to_bytes()
+                .map_err(|e| anyhow::anyhow!("failed to convert raw tx to bytes: {e}"))?,
         };
 
         let sim_response = grpc_client.simulate(request).await?.into_inner();
@@ -104,7 +113,7 @@ pub trait GrpcSigningClient {
 
     /// fetches the chain-registry config for the given chain and denom and returns
     /// the average gas price for the chain denom.
-    async fn query_chain_gas_config(chain: &str, denom: &str) -> Result<f64, StrategistError> {
+    async fn query_chain_gas_config(chain: &str, denom: &str) -> anyhow::Result<f64> {
         let chain_registry_url = format!(
             "https://raw.githubusercontent.com/cosmos/chain-registry/master/{chain}/chain.json"
         );
@@ -115,16 +124,16 @@ pub trait GrpcSigningClient {
 
         let fee_tokens = config["fees"]["fee_tokens"]
             .as_array()
-            .ok_or_else(|| StrategistError::QueryError("failed to get fee_tokens".to_string()))?;
+            .ok_or_else(|| anyhow::anyhow!("failed to get fee_tokens"))?;
 
         let native_fee = fee_tokens
             .iter()
             .find(|entry| entry["denom"] == denom)
             .unwrap();
 
-        let average_gas_price = native_fee["average_gas_price"].as_f64().ok_or_else(|| {
-            StrategistError::QueryError("failed to get chain denom average gas price".to_string())
-        })?;
+        let average_gas_price = native_fee["average_gas_price"]
+            .as_f64()
+            .ok_or_else(|| anyhow::anyhow!("failed to get chain denom average gas price"))?;
 
         Ok(average_gas_price)
     }

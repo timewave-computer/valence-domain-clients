@@ -3,9 +3,8 @@ use tonic::{
     transport::{Channel, ClientTlsConfig},
 };
 
-use crate::{
-    common::error::StrategistError,
-    cosmos::{base_client::BaseClient, grpc_client::GrpcSigningClient, wasm_client::WasmClient},
+use crate::cosmos::{
+    base_client::BaseClient, grpc_client::GrpcSigningClient, wasm_client::WasmClient,
 };
 
 const CHAIN_NAME: &str = "lombardledger";
@@ -26,7 +25,7 @@ impl LombardClient {
         rpc_port: &str,
         mnemonic: &str,
         chain_id: &str,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let avg_gas_price = Self::query_chain_gas_config(CHAIN_NAME, CHAIN_DENOM).await?;
 
         Ok(Self {
