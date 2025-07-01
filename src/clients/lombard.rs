@@ -1,7 +1,4 @@
-use tonic::{
-    async_trait,
-    transport::{Channel, ClientTlsConfig},
-};
+use tonic::async_trait;
 
 use crate::cosmos::{
     base_client::BaseClient, grpc_client::GrpcSigningClient, wasm_client::WasmClient,
@@ -47,18 +44,6 @@ impl WasmClient for LombardClient {}
 
 #[async_trait]
 impl GrpcSigningClient for LombardClient {
-    // overriding the default grpc channel getter to use system certs for tls
-    async fn get_grpc_channel(&self) -> anyhow::Result<Channel> {
-        let channel = Channel::from_shared(self.grpc_url())
-            .map_err(|_| anyhow::anyhow!("failed to build grpc channel"))?
-            // using the system certs
-            .tls_config(ClientTlsConfig::new().with_native_roots())?
-            .connect()
-            .await?;
-
-        Ok(channel)
-    }
-
     fn grpc_url(&self) -> String {
         self.grpc_url.to_string()
     }
