@@ -48,9 +48,9 @@ impl WasmClient for LombardClient {}
 #[async_trait]
 impl GrpcSigningClient for LombardClient {
     // overriding the default grpc channel getter to use system certs for tls
-    async fn get_grpc_channel(&self) -> Result<Channel, StrategistError> {
+    async fn get_grpc_channel(&self) -> anyhow::Result<Channel> {
         let channel = Channel::from_shared(self.grpc_url())
-            .map_err(|_| StrategistError::ClientError("failed to build channel".to_string()))?
+            .map_err(|_| anyhow::anyhow!("failed to build grpc channel"))?
             // using the system certs
             .tls_config(ClientTlsConfig::new().with_native_roots())?
             .connect()
