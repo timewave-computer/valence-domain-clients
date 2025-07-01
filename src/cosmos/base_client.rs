@@ -27,7 +27,7 @@ use log::{info, warn};
 use prost::Message;
 use tonic::Request;
 
-use crate::common::{error::StrategistError, transaction::TransactionResponse};
+use crate::common::transaction::TransactionResponse;
 
 use super::{
     grpc_client::GrpcSigningClient, proto_timestamp::ProtoTimestamp, AuthQueryClient,
@@ -40,8 +40,10 @@ use super::{
 /// these function definitions can be overridden to match the custom chain logic.
 #[async_trait]
 pub trait BaseClient: GrpcSigningClient {
-    fn proto_coin(denom: &str, amt: u128) -> Result<Coin, StrategistError> {
-        let proto_denom: Denom = denom.parse()?;
+    fn proto_coin(denom: &str, amt: u128) -> anyhow::Result<Coin> {
+        let proto_denom: Denom = denom
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Failed to parse denom: {e}"))?;
         Ok(Coin {
             denom: proto_denom,
             amount: amt,
@@ -54,21 +56,25 @@ pub trait BaseClient: GrpcSigningClient {
         amount: u128,
         denom: &str,
         memo: Option<&str>,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
 
         let amount = Coin {
-            denom: denom.parse()?,
+            denom: denom
+                .parse()
+                .map_err(|e| anyhow::anyhow!("Failed to parse denom: {e}"))?,
             amount,
         };
 
         let transfer_msg = MsgSend {
             from_address: signing_client.address.clone(),
-            to_address: AccountId::from_str(to)?,
+            to_address: AccountId::from_str(to)
+                .map_err(|e| anyhow::anyhow!("Failed to parse address: {e}"))?,
             amount: vec![amount],
         }
-        .to_any()?;
+        .to_any()
+        .map_err(|e| anyhow::anyhow!("Failed to convert to Any: {e}"))?;
 
         let simulation_response = self.simulate_tx(transfer_msg.clone()).await?;
         let fee = self.get_tx_fee(simulation_response)?;
@@ -82,7 +88,7 @@ pub trait BaseClient: GrpcSigningClient {
         TransactionResponse::try_from(broadcast_tx_response.tx_response)
     }
 
-    async fn latest_block_header(&self) -> Result<Header, StrategistError> {
+    async fn latest_block_header(&self) -> anyhow::Result<Header> {
         let channel = self.get_grpc_channel().await?;
 
         let mut tendermint_client = TendermintServiceClient::new(channel);
@@ -94,11 +100,11 @@ pub trait BaseClient: GrpcSigningClient {
 
         let sdk_block = response
             .sdk_block
-            .ok_or_else(|| StrategistError::QueryError("no block in response".to_string()))?;
+            .ok_or_else(|| anyhow::anyhow!("no block in response".to_string()))?;
 
         let block_header = sdk_block
             .header
-            .ok_or_else(|| StrategistError::QueryError("no header in sdk_block".to_string()))?;
+            .ok_or_else(|| anyhow::anyhow!("no header in sdk_block".to_string()))?;
 
         Ok(block_header)
     }
@@ -107,7 +113,7 @@ pub trait BaseClient: GrpcSigningClient {
         &self,
         rpc_addr: &str,
         height: u32,
-    ) -> Result<cosmrs::rpc::endpoint::block_results::Response, StrategistError> {
+    ) -> anyhow::Result<cosmrs::rpc::endpoint::block_results::Response> {
         let client = HttpClient::new(rpc_addr)?;
 
         let height = Height::from(height);
@@ -117,7 +123,7 @@ pub trait BaseClient: GrpcSigningClient {
         Ok(results)
     }
 
-    async fn query_balance(&self, address: &str, denom: &str) -> Result<u128, StrategistError> {
+    async fn query_balance(&self, address: &str, denom: &str) -> anyhow::Result<u128> {
         let channel = self.get_grpc_channel().await?;
 
         let mut grpc_client = BankQueryClient::new(channel);
@@ -134,14 +140,14 @@ pub trait BaseClient: GrpcSigningClient {
 
         let coin = response
             .balance
-            .ok_or_else(|| StrategistError::QueryError("No balance returned".to_string()))?;
+            .ok_or_else(|| anyhow::anyhow!("No balance returned"))?;
 
         let amount = coin.amount.parse::<u128>()?;
 
         Ok(amount)
     }
 
-    async fn query_module_account(&self, name: &str) -> Result<ModuleAccount, StrategistError> {
+    async fn query_module_account(&self, name: &str) -> anyhow::Result<ModuleAccount> {
         let channel = self.get_grpc_channel().await?;
 
         let mut grpc_client = AuthQueryClient::new(channel);
@@ -157,17 +163,16 @@ pub trait BaseClient: GrpcSigningClient {
 
         let module_account_any = response
             .account
-            .ok_or_else(|| StrategistError::QueryError("No module account returned".to_string()))?;
+            .ok_or_else(|| anyhow::anyhow!("No module account returned"))?;
 
         // Decode the bytes into a ModuleAccount
-        let module_account = ModuleAccount::decode(&*module_account_any.value).map_err(|e| {
-            StrategistError::QueryError(format!("Failed to decode ModuleAccount: {}", e))
-        })?;
+        let module_account = ModuleAccount::decode(&*module_account_any.value)
+            .map_err(|e| anyhow::anyhow!("Failed to decode ModuleAccount: {e}"))?;
 
         Ok(module_account)
     }
 
-    async fn poll_for_tx(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
+    async fn poll_for_tx(&self, tx_hash: &str) -> anyhow::Result<TxResponse> {
         let channel = self.get_grpc_channel().await?;
 
         let mut grpc_client = CosmosServiceClient::new(channel);
@@ -203,12 +208,10 @@ pub trait BaseClient: GrpcSigningClient {
             };
         }
 
-        Err(StrategistError::QueryError(
-            "failed to confirm tx".to_string(),
-        ))
+        Err(anyhow::anyhow!("failed to confirm tx"))
     }
 
-    async fn query_tx_hash(&self, tx_hash: &str) -> Result<TxResponse, StrategistError> {
+    async fn query_tx_hash(&self, tx_hash: &str) -> anyhow::Result<TxResponse> {
         let channel = self.get_grpc_channel().await?;
 
         let mut grpc_client = CosmosServiceClient::new(channel);
@@ -221,9 +224,7 @@ pub trait BaseClient: GrpcSigningClient {
 
         match rx.into_inner().tx_response {
             Some(r) => Ok(r),
-            None => Err(StrategistError::QueryError(
-                "no tx found with given hash".to_string(),
-            )),
+            None => Err(anyhow::anyhow!("no tx found with given hash")),
         }
     }
 
@@ -234,7 +235,7 @@ pub trait BaseClient: GrpcSigningClient {
         min_amount: u128,
         interval_sec: u64,
         max_attempts: u32,
-    ) -> Result<u128, StrategistError> {
+    ) -> anyhow::Result<u128> {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(interval_sec));
 
         info!("Polling {address} balance to exceed {denom}{min_amount}");
@@ -260,9 +261,9 @@ pub trait BaseClient: GrpcSigningClient {
             }
         }
 
-        Err(StrategistError::QueryError(format!(
+        Err(anyhow::anyhow!(
             "Balance did not exceed {min_amount}{denom} after {max_attempts} attempts"
-        )))
+        ))
     }
 
     async fn ibc_transfer(
@@ -273,7 +274,7 @@ pub trait BaseClient: GrpcSigningClient {
         channel_id: String,
         timeout_seconds: u64,
         memo: Option<String>,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         // first we query the latest block header to respect the chain time for timeouts
         let latest_block_header = self.latest_block_header().await?;
 

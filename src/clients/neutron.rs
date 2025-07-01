@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-    common::{error::StrategistError, transaction::TransactionResponse},
+    common::transaction::TransactionResponse,
     cosmos::{
         base_client::BaseClient, grpc_client::GrpcSigningClient, proto_timestamp::ProtoTimestamp,
         wasm_client::WasmClient, CosmosServiceClient,
@@ -27,7 +27,7 @@ impl NeutronClient {
         rpc_port: &str,
         mnemonic: &str,
         chain_id: &str,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let avg_gas_price = Self::query_chain_gas_config("neutron", CHAIN_DENOM).await?;
 
         Ok(Self {
@@ -44,7 +44,7 @@ impl NeutronClient {
     pub async fn create_tokenfactory_denom(
         &self,
         subdenom: &str,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
 
@@ -67,7 +67,8 @@ impl NeutronClient {
                 any_msg,
                 cosmrs::tx::Fee {
                     amount: vec![cosmrs::Coin {
-                        denom: Denom::from_str("untrn")?,
+                        denom: Denom::from_str("untrn")
+                            .map_err(|e| anyhow::anyhow!("Failed to parse denom: {e}"))?,
                         amount: 100_000,
                     }],
                     gas_limit: 300_000,
@@ -90,7 +91,7 @@ impl NeutronClient {
         subdenom: &str,
         amount: u128,
         mint_to_address: Option<&str>,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         let signing_client = self.get_signing_client().await?;
         let channel = self.get_grpc_channel().await?;
 
@@ -146,7 +147,7 @@ impl BaseClient for NeutronClient {
         channel_id: String,
         timeout_seconds: u64,
         memo: Option<String>,
-    ) -> Result<TransactionResponse, StrategistError> {
+    ) -> anyhow::Result<TransactionResponse> {
         // first we query the latest block header to respect the chain time for timeouts
         let latest_block_header = self.latest_block_header().await?;
 

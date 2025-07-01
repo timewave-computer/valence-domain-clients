@@ -1,9 +1,6 @@
 use tonic::async_trait;
 
-use crate::{
-    common::error::StrategistError,
-    cosmos::{base_client::BaseClient, grpc_client::GrpcSigningClient},
-};
+use crate::cosmos::{base_client::BaseClient, grpc_client::GrpcSigningClient};
 
 const CHAIN_PREFIX: &str = "cosmos";
 const CHAIN_DENOM: &str = "uatom";
@@ -25,7 +22,7 @@ impl CosmosHubClient {
         mnemonic: &str,
         chain_id: &str,
         chain_denom: &str,
-    ) -> Result<Self, StrategistError> {
+    ) -> anyhow::Result<Self> {
         let avg_gas_price = Self::query_chain_gas_config("cosmoshub", CHAIN_DENOM).await?;
 
         Ok(Self {
