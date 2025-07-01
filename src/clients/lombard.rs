@@ -29,7 +29,7 @@ impl LombardClient {
         let avg_gas_price = Self::query_chain_gas_config(CHAIN_NAME, CHAIN_DENOM).await?;
 
         Ok(Self {
-            grpc_url: format!("https://{rpc_url}:{rpc_port}"),
+            grpc_url: format!("{rpc_url}:{rpc_port}"),
             mnemonic: mnemonic.to_string(),
             chain_id: chain_id.to_string(),
             chain_denom: CHAIN_DENOM.to_string(),
