@@ -4,7 +4,7 @@ use cosmrs::{
     tx::{BodyBuilder, Fee, SignDoc, SignerInfo},
     Any, Coin,
 };
-use tonic::{async_trait, transport::Channel};
+use tonic::{async_trait, transport::{Channel, ClientTlsConfig}};
 
 use super::{signing_client::SigningClient, CosmosServiceClient};
 
@@ -26,6 +26,7 @@ pub trait GrpcSigningClient {
     async fn get_grpc_channel(&self) -> anyhow::Result<Channel> {
         let channel = Channel::from_shared(self.grpc_url())
             .map_err(|_| anyhow::anyhow!("failed to build channel"))?
+            .tls_config(ClientTlsConfig::new().with_native_roots())?
             .connect()
             .await?;
 
