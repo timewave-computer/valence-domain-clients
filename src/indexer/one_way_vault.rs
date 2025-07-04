@@ -10,5 +10,6 @@ pub trait OneWayVaultIndexer: ValenceIndexerBaseClient {
     async fn query_vault_withdraw_requests(
         &self,
         from_id: Option<u64>,
+        finalized: bool,
     ) -> anyhow::Result<Vec<(u64, Address, String, U256)>>;
 }

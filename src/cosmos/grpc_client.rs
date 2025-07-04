@@ -4,7 +4,10 @@ use cosmrs::{
     tx::{BodyBuilder, Fee, SignDoc, SignerInfo},
     Any, Coin,
 };
-use tonic::{async_trait, transport::{Channel, ClientTlsConfig}};
+use tonic::{
+    async_trait,
+    transport::{Channel, ClientTlsConfig},
+};
 
 use super::{signing_client::SigningClient, CosmosServiceClient};
 

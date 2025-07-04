@@ -54,23 +54,33 @@ impl OneWayVaultIndexer for OneWayVaultIndexerClient {
     async fn query_vault_withdraw_requests(
         &self,
         from_id: Option<u64>,
+        finalized: bool,
     ) -> anyhow::Result<Vec<(u64, Address, String, U256)>> {
         let indexer_url = self.get_indexer_url();
         let vault_addr = self.get_vault_addr();
 
-        // if `from_id` is passed, we format it in the expected format.
-        // otherwise default to empty tring
-        let start_from = match from_id {
-            Some(id) => format!("?from={id}"),
-            None => "".to_string(),
-        };
+        let mut query_flags = vec![];
 
-        let indexer_endpoint =
-            format!("{indexer_url}/vault/{vault_addr}/withdrawRequests{start_from}&order=asc");
+        // if specified, only fetch requests starting from (incl.) id
+        if let Some(id) = from_id {
+            query_flags.push(format!("from={id}"));
+        }
+
+        // if enabled, only fetch requests from finalized blocks
+        if finalized {
+            query_flags.push("blockTag=finalized".to_string());
+        }
+
+        // fetch all requests in ascending order
+        query_flags.push("order=asc".to_string());
+
+        let query_params = query_flags.join("&");
+
+        let query_url = format!("{indexer_url}/vault/{vault_addr}/withdrawRequests?{query_params}");
 
         let json_response: Value = self
             .get_request_client()
-            .get(indexer_endpoint)
+            .get(query_url)
             .header("Content-Type", "application/json")
             .header("X-Api-Key", self.get_api_key())
             .send()
@@ -127,8 +137,10 @@ async fn indexer_works() {
 
     let indexer_client = OneWayVaultIndexerClient::new(indexer_url, api_key, vault_addr);
 
-    indexer_client
-        .query_vault_withdraw_requests(Some(1))
+    let resp = indexer_client
+        .query_vault_withdraw_requests(Some(0), true)
         .await
         .unwrap();
+
+    println!("resp: {:?}", resp);
 }
