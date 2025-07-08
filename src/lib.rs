@@ -4,3 +4,4 @@ pub mod coprocessor;
 pub mod cosmos;
 pub mod evm;
 pub mod indexer;
+pub mod solana;
