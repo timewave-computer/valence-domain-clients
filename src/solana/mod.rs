@@ -5,4 +5,4 @@ pub mod signing_client;
 
 pub use base_client::SolanaBaseClient;
 pub use rpc_client::SolanaRpcClient;
-pub use signing_client::SolanaSigningClient; 
+pub use signing_client::{SolanaSigningClient, SolanaClient}; 

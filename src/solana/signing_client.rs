@@ -6,11 +6,16 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     transaction::Transaction,
+    derivation_path::DerivationPath,
 };
 use std::str::FromStr;
+use bip32::{Language, Mnemonic};
 
 use super::rpc_client::SolanaRpcClient;
 use crate::common::transaction::TransactionResponse;
+
+/// Default timeout for transaction confirmation in seconds
+const DEFAULT_TRANSACTION_TIMEOUT_SECONDS: u64 = 30;
 
 /// Trait for Solana transaction signing operations
 #[async_trait]
@@ -48,7 +53,7 @@ pub trait SolanaSigningClient: SolanaRpcClient {
         let signature = self.send_transaction(&transaction).await?;
         
         // Poll for confirmation
-        let confirmed = self.poll_for_signature_confirmation(&signature, 30).await?;
+        let confirmed = self.poll_for_signature_confirmation(&signature, DEFAULT_TRANSACTION_TIMEOUT_SECONDS).await?;
         
         if !confirmed {
             return Err(anyhow::anyhow!("Transaction not confirmed"));
@@ -79,6 +84,16 @@ pub trait SolanaSigningClient: SolanaRpcClient {
         self.send_instructions(vec![instruction]).await
     }
     
+    /// Transfer SOL with amount in SOL (not lamports)
+    async fn transfer_sol_amount(
+        &self,
+        to: &str,
+        amount_sol: f64,
+    ) -> anyhow::Result<TransactionResponse> {
+        let amount_lamports = (amount_sol * 1_000_000_000.0) as u64;
+        self.transfer_sol(to, amount_lamports).await
+    }
+    
     /// Get SOL balance in lamports
     async fn get_sol_balance(&self) -> anyhow::Result<u64> {
         let pubkey = self.get_pubkey();
@@ -99,7 +114,7 @@ pub trait SolanaSigningClient: SolanaRpcClient {
         let signature = rpc_client.request_airdrop(&pubkey, amount_lamports).await?;
         
         // Poll for confirmation
-        let confirmed = self.poll_for_signature_confirmation(&signature, 30).await?;
+        let confirmed = self.poll_for_signature_confirmation(&signature, DEFAULT_TRANSACTION_TIMEOUT_SECONDS).await?;
         
         if !confirmed {
             return Err(anyhow::anyhow!("Airdrop not confirmed"));
@@ -114,17 +129,23 @@ pub trait SolanaSigningClient: SolanaRpcClient {
             gas_used: 0,
         })
     }
+    
+    /// Airdrop SOL with amount in SOL (not lamports)
+    async fn airdrop_sol_amount(&self, amount_sol: f64) -> anyhow::Result<TransactionResponse> {
+        let amount_lamports = (amount_sol * 1_000_000_000.0) as u64;
+        self.airdrop_sol(amount_lamports).await
+    }
 }
 
 /// Implementation of signing client that wraps a keypair
-pub struct SolanaSigningClientImpl {
+pub struct SolanaClient {
     keypair: Keypair,
     rpc_client: solana_client::nonblocking::rpc_client::RpcClient,
     rpc_url: String,
     commitment: solana_sdk::commitment_config::CommitmentConfig,
 }
 
-impl SolanaSigningClientImpl {
+impl SolanaClient {
     /// Create a new signing client from a keypair
     pub fn new(keypair: Keypair, rpc_url: &str) -> Self {
         let rpc_client = solana_client::nonblocking::rpc_client::RpcClient::new(rpc_url.to_string());
@@ -155,10 +176,28 @@ impl SolanaSigningClientImpl {
         let keypair = Keypair::new();
         Self::new(keypair, rpc_url)
     }
+    
+    /// Create a new signing client from a mnemonic
+    pub fn from_mnemonic(mnemonic: &str, rpc_url: &str) -> anyhow::Result<Self> {
+        let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
+        let seed = mnemonic.to_seed("");
+        
+        // Use the Solana derivation path: m/44'/501'/0'/0'
+        let derivation_path = DerivationPath::from_str("m/44'/501'/0'/0'")?;
+        
+        // Derive the keypair from the seed using the derivation path
+        let extended_key = bip32::ExtendedPrivateKey::derive_from_path(&seed, &derivation_path)?;
+        let private_key = extended_key.private_key();
+        
+        // Create Solana keypair from the private key
+        let keypair = Keypair::from_bytes(&private_key.to_bytes())?;
+        
+        Ok(Self::new(keypair, rpc_url))
+    }
 }
 
 #[async_trait]
-impl SolanaRpcClient for SolanaSigningClientImpl {
+impl SolanaRpcClient for SolanaClient {
     fn get_rpc_client(&self) -> &solana_client::nonblocking::rpc_client::RpcClient {
         &self.rpc_client
     }
@@ -173,7 +212,7 @@ impl SolanaRpcClient for SolanaSigningClientImpl {
 }
 
 #[async_trait]
-impl SolanaSigningClient for SolanaSigningClientImpl {
+impl SolanaSigningClient for SolanaClient {
     fn get_keypair(&self) -> &Keypair {
         &self.keypair
     }

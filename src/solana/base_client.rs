@@ -30,15 +30,7 @@ pub trait SolanaBaseClient: SolanaSigningClient {
         lamports as f64 / 1_000_000_000.0
     }
     
-    /// Transfer SOL with amount in SOL (not lamports)
-    async fn transfer_sol_amount(
-        &self,
-        to: &str,
-        amount_sol: f64,
-    ) -> anyhow::Result<TransactionResponse> {
-        let amount_lamports = Self::sol_to_lamports(amount_sol);
-        self.transfer_sol(to, amount_lamports).await
-    }
+
     
     /// Get SOL balance in SOL (not lamports)
     async fn get_sol_balance_as_sol(&self) -> anyhow::Result<f64> {
@@ -52,11 +44,7 @@ pub trait SolanaBaseClient: SolanaSigningClient {
         Ok(Self::lamports_to_sol(lamports))
     }
     
-    /// Airdrop SOL with amount in SOL (not lamports)
-    async fn airdrop_sol_amount(&self, amount_sol: f64) -> anyhow::Result<TransactionResponse> {
-        let amount_lamports = Self::sol_to_lamports(amount_sol);
-        self.airdrop_sol(amount_lamports).await
-    }
+
     
     /// Get the latest block height
     async fn latest_block_height(&self) -> anyhow::Result<u64> {
