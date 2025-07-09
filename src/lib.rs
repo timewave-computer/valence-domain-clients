@@ -1,7 +1,10 @@
 pub mod clients;
 pub mod common;
 pub mod coprocessor;
+#[cfg(feature = "cosmos")]
 pub mod cosmos;
+#[cfg(feature = "evm")]
 pub mod evm;
 pub mod indexer;
+#[cfg(feature = "solana")]
 pub mod solana;
