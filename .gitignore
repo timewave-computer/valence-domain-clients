@@ -4,5 +4,16 @@ result/
 .cargo/
 .rustup
 
+# Generated proto files
+proto/
+src/proto/
+
 # System files
 .DS_Store
+
+# IDE files
+.vscode/
+.cursor/
+
+# Working files
+work/
