@@ -48,8 +48,18 @@ pub trait SolanaRpcClient {
     /// Get account info
     async fn get_account(&self, pubkey: &Pubkey) -> anyhow::Result<Option<solana_sdk::account::Account>> {
         let rpc_client = self.get_rpc_client();
-        let account = rpc_client.get_account(pubkey).await?;
-        Ok(Some(account))
+        match rpc_client.get_account(pubkey).await {
+            Ok(account) => Ok(Some(account)),
+            Err(e) => {
+                // Check if this is an "account not found" error
+                let error_str = e.to_string();
+                if error_str.contains("AccountNotFound") || error_str.contains("Invalid param: could not find account") {
+                    Ok(None)
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
     
     /// Send a transaction
@@ -90,8 +100,18 @@ pub trait SolanaRpcClient {
             max_supported_transaction_version: Some(DEFAULT_MAX_TRANSACTION_VERSION),
         };
         
-        let transaction = rpc_client.get_transaction_with_config(signature, config).await?;
-        Ok(Some(transaction))
+        match rpc_client.get_transaction_with_config(signature, config).await {
+            Ok(transaction) => Ok(Some(transaction)),
+            Err(e) => {
+                // Check if this is a "transaction not found" error
+                let error_str = e.to_string();
+                if error_str.contains("Signature not found") || error_str.contains("Transaction not found") {
+                    Ok(None)
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
     
     /// Poll for transaction confirmation
