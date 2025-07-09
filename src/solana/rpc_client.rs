@@ -10,6 +10,15 @@ use solana_sdk::{
 };
 use solana_transaction_status::UiTransactionEncoding;
 
+/// Default polling interval for transaction confirmation
+const DEFAULT_POLLING_INTERVAL_MS: u64 = 500;
+
+/// Default maximum retries for transaction submission
+const DEFAULT_MAX_RETRIES: usize = 3;
+
+/// Default maximum supported transaction version
+const DEFAULT_MAX_TRANSACTION_VERSION: u8 = 0;
+
 /// Trait for Solana RPC client operations
 #[async_trait]
 pub trait SolanaRpcClient {
@@ -39,8 +48,18 @@ pub trait SolanaRpcClient {
     /// Get account info
     async fn get_account(&self, pubkey: &Pubkey) -> anyhow::Result<Option<solana_sdk::account::Account>> {
         let rpc_client = self.get_rpc_client();
-        let account = rpc_client.get_account(pubkey).await?;
-        Ok(Some(account))
+        match rpc_client.get_account(pubkey).await {
+            Ok(account) => Ok(Some(account)),
+            Err(e) => {
+                // Check if this is an "account not found" error
+                let error_str = e.to_string();
+                if error_str.contains("AccountNotFound") || error_str.contains("Invalid param: could not find account") {
+                    Ok(None)
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
     
     /// Send a transaction
@@ -50,7 +69,7 @@ pub trait SolanaRpcClient {
             skip_preflight: false,
             preflight_commitment: Some(self.commitment().commitment),
             encoding: Some(UiTransactionEncoding::Base64),
-            max_retries: Some(3),
+            max_retries: Some(DEFAULT_MAX_RETRIES),
             min_context_slot: None,
         };
         
@@ -78,11 +97,21 @@ pub trait SolanaRpcClient {
         let config = solana_rpc_client_api::config::RpcTransactionConfig {
             encoding: Some(UiTransactionEncoding::Json),
             commitment: Some(self.commitment()),
-            max_supported_transaction_version: Some(0),
+            max_supported_transaction_version: Some(DEFAULT_MAX_TRANSACTION_VERSION),
         };
         
-        let transaction = rpc_client.get_transaction_with_config(signature, config).await?;
-        Ok(Some(transaction))
+        match rpc_client.get_transaction_with_config(signature, config).await {
+            Ok(transaction) => Ok(Some(transaction)),
+            Err(e) => {
+                // Check if this is a "transaction not found" error
+                let error_str = e.to_string();
+                if error_str.contains("Signature not found") || error_str.contains("Transaction not found") {
+                    Ok(None)
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
     
     /// Poll for transaction confirmation
@@ -91,7 +120,7 @@ pub trait SolanaRpcClient {
         let timeout = std::time::Duration::from_secs(timeout_seconds);
         
         let start_time = std::time::Instant::now();
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(DEFAULT_POLLING_INTERVAL_MS));
         
         loop {
             interval.tick().await;

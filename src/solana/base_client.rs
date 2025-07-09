@@ -2,6 +2,7 @@
 use async_trait::async_trait;
 use solana_sdk::{
     instruction::Instruction,
+    native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
     signature::Signature,
     signer::Signer,
@@ -22,23 +23,15 @@ use crate::common::transaction::TransactionResponse;
 pub trait SolanaBaseClient: SolanaSigningClient {
     /// Convert SOL to lamports
     fn sol_to_lamports(sol: f64) -> u64 {
-        (sol * 1_000_000_000.0) as u64
+        (sol * LAMPORTS_PER_SOL as f64) as u64
     }
     
     /// Convert lamports to SOL
     fn lamports_to_sol(lamports: u64) -> f64 {
-        lamports as f64 / 1_000_000_000.0
+        lamports as f64 / LAMPORTS_PER_SOL as f64
     }
     
-    /// Transfer SOL with amount in SOL (not lamports)
-    async fn transfer_sol_amount(
-        &self,
-        to: &str,
-        amount_sol: f64,
-    ) -> anyhow::Result<TransactionResponse> {
-        let amount_lamports = Self::sol_to_lamports(amount_sol);
-        self.transfer_sol(to, amount_lamports).await
-    }
+
     
     /// Get SOL balance in SOL (not lamports)
     async fn get_sol_balance_as_sol(&self) -> anyhow::Result<f64> {
@@ -52,11 +45,7 @@ pub trait SolanaBaseClient: SolanaSigningClient {
         Ok(Self::lamports_to_sol(lamports))
     }
     
-    /// Airdrop SOL with amount in SOL (not lamports)
-    async fn airdrop_sol_amount(&self, amount_sol: f64) -> anyhow::Result<TransactionResponse> {
-        let amount_lamports = Self::sol_to_lamports(amount_sol);
-        self.airdrop_sol(amount_lamports).await
-    }
+
     
     /// Get the latest block height
     async fn latest_block_height(&self) -> anyhow::Result<u64> {
