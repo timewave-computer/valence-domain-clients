@@ -7,7 +7,7 @@ use crate::solana::{
 use async_trait::async_trait;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
-    signature::Keypair,
+    signature::{Keypair, Signer},
 };
 
 /// Default localhost RPC URL for Solana test validator
