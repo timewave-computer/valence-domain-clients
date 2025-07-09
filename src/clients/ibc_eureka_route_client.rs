@@ -1,5 +1,4 @@
 use alloy::transports::http::reqwest;
-use serde_json::Value;
 
 #[derive(Debug, Default, Clone)]
 pub struct IBCEurekaRouteClient {
@@ -30,11 +29,126 @@ impl IBCEurekaRouteClient {
     }
 }
 
+/// these types can be extended with new fields.
+/// if skip api extends the response type with new fields,
+/// they will be ignored until added here.
+pub mod skip_api_types {
+    use serde::{Deserialize, Serialize};
+    use serde_json::Value;
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct SkipRouteResponse {
+        pub amount_in: Option<String>,
+        pub amount_out: Option<String>,
+        pub estimated_amount_out: Option<String>,
+        pub does_swap: Option<bool>,
+        pub usd_amount_in: Option<String>,
+        pub usd_amount_out: Option<String>,
+        pub chain_ids: Option<Vec<String>>,
+        pub source_asset_chain_id: Option<String>,
+        pub source_asset_denom: Option<String>,
+        pub dest_asset_chain_id: Option<String>,
+        pub dest_asset_denom: Option<String>,
+        pub required_chain_addresses: Option<Vec<String>>,
+        pub swap_venues: Option<Vec<Value>>,
+        pub txs_required: Option<u64>,
+        pub operations: Vec<Operation>,
+        pub estimated_route_duration_seconds: u64,
+        pub estimated_fees: Option<Vec<EstimatedFee>>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct Operation {
+        pub amount_in: Option<String>,
+        pub amount_out: Option<String>,
+        pub tx_index: Option<u64>,
+        pub evm_swap: Option<EvmSwap>,
+        pub eureka_transfer: Option<EurekaTransfer>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct EvmSwap {
+        pub input_token: Option<String>,
+        pub amount_in: String,
+        pub swap_calldata: Option<String>,
+        pub amount_out: String,
+        pub from_chain_id: Option<String>,
+        pub denom_in: String,
+        pub denom_out: String,
+        pub swap_venues: Option<Vec<Value>>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct EurekaTransfer {
+        pub source_client: String,
+        pub to_chain_entry_contract_address: String,
+        pub to_chain_callback_contract_address: String,
+        pub bridge_id: Option<String>,
+        pub denom_in: Option<String>,
+        pub denom_out: Option<String>,
+        pub destination_port: Option<String>,
+        pub from_chain_id: Option<String>,
+        pub to_chain_id: Option<String>,
+        pub pfm_enabled: Option<bool>,
+        pub supports_memo: Option<bool>,
+        pub smart_relay: Option<bool>,
+        pub smart_relay_fee_quote: SmartRelayFeeQuote,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct SmartRelayFeeQuote {
+        pub fee_amount: String,
+        pub fee_denom: String,
+        pub expiration: String,
+        pub fee_payment_address: String,
+        pub relayer_address: Option<String>,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct EstimatedFee {
+        pub amount: String,
+        pub bridge_id: String,
+        pub chain_id: String,
+        pub fee_behavior: String,
+        pub fee_type: String,
+        pub tx_index: Option<u64>,
+        pub usd_amount: String,
+        pub origin_asset: OriginAsset,
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[serde(default)]
+    pub struct OriginAsset {
+        pub chain_id: String,
+        pub coingecko_id: Option<String>,
+        pub decimals: Option<u8>,
+        pub denom: String,
+        pub description: Option<String>,
+        pub is_cw20: Option<bool>,
+        pub is_evm: Option<bool>,
+        pub is_svm: Option<bool>,
+        pub logo_uri: Option<String>,
+        pub name: Option<String>,
+        pub origin_chain_id: Option<String>,
+        pub origin_denom: Option<String>,
+        pub recommended_symbol: Option<String>,
+        pub symbol: Option<String>,
+        pub trace: Option<String>,
+        pub token_contract: Option<String>,
+    }
+}
+
 impl IBCEurekaRouteClient {
     pub async fn query_skip_eureka_route(
         &self,
         amount: impl Into<String>,
-    ) -> anyhow::Result<Value> {
+    ) -> anyhow::Result<skip_api_types::SkipRouteResponse> {
         // build the eureka route request body
         let skip_request_body = serde_json::json!({
             "source_asset_chain_id": self.src_chain_id,
@@ -62,11 +176,11 @@ impl IBCEurekaRouteClient {
             .header("Content-Type", "application/json")
             .json(&skip_request_body)
             .send()
-            .await?
-            .json::<serde_json::Value>()
             .await?;
 
-        Ok(resp)
+        let typed_resp: skip_api_types::SkipRouteResponse = resp.json().await?;
+
+        Ok(typed_resp)
     }
 }
 
@@ -83,5 +197,23 @@ async fn test_route_query() {
     );
 
     let resp = client.query_skip_eureka_route("10000000").await.unwrap();
-    println!("{}", serde_json::to_string_pretty(&resp).unwrap());
+
+    assert_eq!(resp.amount_in.unwrap(), "10000000");
+    assert_eq!(resp.dest_asset_chain_id.unwrap(), "1");
+    assert_eq!(
+        resp.source_asset_denom.unwrap(),
+        "ibc/D742E8566B0B8CC8F569D950051C09CF57988A88F0E45574BFB3079D41DE6462"
+    );
+    assert_eq!(
+        resp.dest_asset_denom.unwrap(),
+        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
+    );
+    assert_eq!(resp.source_asset_chain_id.unwrap(), "cosmoshub-4");
+
+    let eureka_transfer_op = resp
+        .operations
+        .iter()
+        .find(|op| op.eureka_transfer.is_some())
+        .unwrap();
+    assert!(eureka_transfer_op.eureka_transfer.is_some());
 }
