@@ -7,8 +7,8 @@ pub mod ethereum;
 pub mod gaia;
 #[cfg(feature = "cosmos")]
 pub mod ibc_eureka_route_client;
-#[cfg(feature = "cosmos")]
-pub mod localnet;
+#[cfg(feature = "solana")]
+pub mod solana;
 #[cfg(feature = "cosmos")]
 pub mod lombard;
 #[cfg(feature = "cosmos")]
