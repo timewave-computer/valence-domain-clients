@@ -2,6 +2,7 @@
 use async_trait::async_trait;
 use solana_sdk::{
     instruction::Instruction,
+    native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
     signature::Signature,
     signer::Signer,
@@ -22,12 +23,12 @@ use crate::common::transaction::TransactionResponse;
 pub trait SolanaBaseClient: SolanaSigningClient {
     /// Convert SOL to lamports
     fn sol_to_lamports(sol: f64) -> u64 {
-        (sol * 1_000_000_000.0) as u64
+        (sol * LAMPORTS_PER_SOL as f64) as u64
     }
     
     /// Convert lamports to SOL
     fn lamports_to_sol(lamports: u64) -> f64 {
-        lamports as f64 / 1_000_000_000.0
+        lamports as f64 / LAMPORTS_PER_SOL as f64
     }
     
 

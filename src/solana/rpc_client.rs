@@ -10,6 +10,15 @@ use solana_sdk::{
 };
 use solana_transaction_status::UiTransactionEncoding;
 
+/// Default polling interval for transaction confirmation
+const DEFAULT_POLLING_INTERVAL_MS: u64 = 500;
+
+/// Default maximum retries for transaction submission
+const DEFAULT_MAX_RETRIES: usize = 3;
+
+/// Default maximum supported transaction version
+const DEFAULT_MAX_TRANSACTION_VERSION: u8 = 0;
+
 /// Trait for Solana RPC client operations
 #[async_trait]
 pub trait SolanaRpcClient {
@@ -50,7 +59,7 @@ pub trait SolanaRpcClient {
             skip_preflight: false,
             preflight_commitment: Some(self.commitment().commitment),
             encoding: Some(UiTransactionEncoding::Base64),
-            max_retries: Some(3),
+            max_retries: Some(DEFAULT_MAX_RETRIES),
             min_context_slot: None,
         };
         
@@ -78,7 +87,7 @@ pub trait SolanaRpcClient {
         let config = solana_rpc_client_api::config::RpcTransactionConfig {
             encoding: Some(UiTransactionEncoding::Json),
             commitment: Some(self.commitment()),
-            max_supported_transaction_version: Some(0),
+            max_supported_transaction_version: Some(DEFAULT_MAX_TRANSACTION_VERSION),
         };
         
         let transaction = rpc_client.get_transaction_with_config(signature, config).await?;
@@ -91,7 +100,7 @@ pub trait SolanaRpcClient {
         let timeout = std::time::Duration::from_secs(timeout_seconds);
         
         let start_time = std::time::Instant::now();
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(DEFAULT_POLLING_INTERVAL_MS));
         
         loop {
             interval.tick().await;

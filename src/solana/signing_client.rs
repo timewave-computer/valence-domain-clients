@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use solana_sdk::{
     instruction::Instruction,
     message::Message,
+    native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     transaction::Transaction,
@@ -16,6 +17,9 @@ use crate::common::transaction::TransactionResponse;
 
 /// Default timeout for transaction confirmation in seconds
 const DEFAULT_TRANSACTION_TIMEOUT_SECONDS: u64 = 30;
+
+/// Standard Solana BIP44 derivation path used by browser wallets (Phantom, Solflare)
+const SOLANA_DERIVATION_PATH: &str = "m/44'/501'/0'/0'";
 
 /// Trait for Solana transaction signing operations
 #[async_trait]
@@ -90,7 +94,7 @@ pub trait SolanaSigningClient: SolanaRpcClient {
         to: &str,
         amount_sol: f64,
     ) -> anyhow::Result<TransactionResponse> {
-        let amount_lamports = (amount_sol * 1_000_000_000.0) as u64;
+        let amount_lamports = (amount_sol * LAMPORTS_PER_SOL as f64) as u64;
         self.transfer_sol(to, amount_lamports).await
     }
     
@@ -132,7 +136,7 @@ pub trait SolanaSigningClient: SolanaRpcClient {
     
     /// Airdrop SOL with amount in SOL (not lamports)
     async fn airdrop_sol_amount(&self, amount_sol: f64) -> anyhow::Result<TransactionResponse> {
-        let amount_lamports = (amount_sol * 1_000_000_000.0) as u64;
+        let amount_lamports = (amount_sol * LAMPORTS_PER_SOL as f64) as u64;
         self.airdrop_sol(amount_lamports).await
     }
 }
@@ -182,8 +186,8 @@ impl SolanaClient {
         let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
         let seed = mnemonic.to_seed("");
         
-        // Use the Solana derivation path: m/44'/501'/0'/0'
-        let derivation_path = DerivationPath::from_str("m/44'/501'/0'/0'")?;
+        // Use the standard Solana derivation path
+        let derivation_path = DerivationPath::from_str(SOLANA_DERIVATION_PATH)?;
         
         // Derive the keypair from the seed using the derivation path
         let extended_key = bip32::ExtendedPrivateKey::derive_from_path(&seed, &derivation_path)?;

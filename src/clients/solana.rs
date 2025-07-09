@@ -10,6 +10,9 @@ use solana_sdk::{
     signature::Keypair,
 };
 
+/// Default localhost RPC URL for Solana test validator
+const DEFAULT_LOCALHOST_RPC_URL: &str = "http://localhost:8899";
+
 /// Solana client for development and testing (supports any Solana cluster)
 /// 
 /// This client can connect to any Solana cluster by specifying the RPC URL.
@@ -21,7 +24,7 @@ pub struct SolanaTestClient {
 impl SolanaTestClient {
     /// Create a new localnet client
     pub fn new(keypair: Keypair) -> Self {
-        let inner = SolanaClient::new(keypair, "http://localhost:8899");
+        let inner = SolanaClient::new(keypair, DEFAULT_LOCALHOST_RPC_URL);
         Self { inner }
     }
     
@@ -33,7 +36,7 @@ impl SolanaTestClient {
     
     /// Create a new localnet client from private key bytes
     pub fn from_bytes(private_key: &[u8]) -> anyhow::Result<Self> {
-        Self::from_bytes_with_rpc_url(private_key, "http://localhost:8899")
+        Self::from_bytes_with_rpc_url(private_key, DEFAULT_LOCALHOST_RPC_URL)
     }
     
     /// Create a new localnet client from private key bytes with custom RPC URL
@@ -44,7 +47,7 @@ impl SolanaTestClient {
     
     /// Create a new localnet client from base58 encoded private key
     pub fn from_base58(private_key: &str) -> anyhow::Result<Self> {
-        Self::from_base58_with_rpc_url(private_key, "http://localhost:8899")
+        Self::from_base58_with_rpc_url(private_key, DEFAULT_LOCALHOST_RPC_URL)
     }
     
     /// Create a new localnet client from base58 encoded private key with custom RPC URL
@@ -55,7 +58,7 @@ impl SolanaTestClient {
     
     /// Generate a new client with random keypair
     pub fn generate_new() -> Self {
-        Self::generate_new_with_rpc_url("http://localhost:8899")
+        Self::generate_new_with_rpc_url(DEFAULT_LOCALHOST_RPC_URL)
     }
     
     /// Generate a new client with random keypair and custom RPC URL
@@ -66,7 +69,7 @@ impl SolanaTestClient {
     
     /// Create a new localnet client from a mnemonic
     pub fn from_mnemonic(mnemonic: &str) -> anyhow::Result<Self> {
-        let inner = SolanaClient::from_mnemonic(mnemonic, "http://localhost:8899")?;
+        let inner = SolanaClient::from_mnemonic(mnemonic, DEFAULT_LOCALHOST_RPC_URL)?;
         Ok(Self { inner })
     }
     
@@ -112,7 +115,7 @@ mod tests {
     use super::*;
     use solana_sdk::signature::Keypair;
     
-    const TEST_RPC_URL: &str = "http://localhost:8899";
+    const TEST_RPC_URL: &str = DEFAULT_LOCALHOST_RPC_URL;
     
     #[tokio::test]
     #[ignore = "requires local solana test validator"]
