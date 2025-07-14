@@ -13,7 +13,7 @@ use alloy::transports::Transport;
 use alloy::providers::Provider;
 use alloy::rpc::types::{TransactionReceipt, TransactionRequest};
 use alloy::transports::http::{Client, Http};
-use tonic::async_trait;
+use async_trait::async_trait;
 
 use super::request_provider_client::RequestProviderClient;
 

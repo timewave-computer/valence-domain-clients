@@ -1,3 +1,4 @@
+#[cfg(feature = "evm")]
 use alloy::transports::http::reqwest;
 use serde_json::Value;
 

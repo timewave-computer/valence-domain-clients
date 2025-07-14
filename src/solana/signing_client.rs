@@ -7,10 +7,11 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     transaction::Transaction,
-    derivation_path::DerivationPath,
+    bs58,
 };
 use std::str::FromStr;
-use bip32::{Language, Mnemonic};
+// use bip32::{Language, Mnemonic};
+// use ed25519_dalek::SigningKey;
 
 use super::rpc_client::SolanaRpcClient;
 use crate::common::transaction::TransactionResponse;
@@ -183,20 +184,8 @@ impl SolanaClient {
     
     /// Create a new signing client from a mnemonic
     pub fn from_mnemonic(mnemonic: &str, rpc_url: &str) -> anyhow::Result<Self> {
-        let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
-        let seed = mnemonic.to_seed("");
-        
-        // Use the standard Solana derivation path
-        let derivation_path = DerivationPath::from_str(SOLANA_DERIVATION_PATH)?;
-        
-        // Derive the keypair from the seed using the derivation path
-        let extended_key = bip32::ExtendedPrivateKey::derive_from_path(&seed, &derivation_path)?;
-        let private_key = extended_key.private_key();
-        
-        // Create Solana keypair from the private key
-        let keypair = Keypair::from_bytes(&private_key.to_bytes())?;
-        
-        Ok(Self::new(keypair, rpc_url))
+        // TODO: Implement mnemonic support after resolving BIP32 compatibility issues
+        anyhow::bail!("Mnemonic support is temporarily disabled due to BIP32 compatibility issues with solana-sdk 2.1.6")
     }
 }
 

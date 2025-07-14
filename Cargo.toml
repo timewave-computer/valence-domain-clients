@@ -8,11 +8,12 @@ repository = "https://github.com/timewave-computer/valence-domain-clients"
 description = "Client implementations for interacting with Valence Protocol domains"
 
 [features]
-default = ["cosmos", "evm"]
+default = ["test-utils"]
 test-utils = []
 cosmos = ["cosmrs", "cosmos-sdk-proto", "tonic", "neutron-std", "ibc"]
 evm = ["alloy", "alloy_signer_local", "alloy_primitives_encoder", "alloy_sol_types_encoder"]
 solana = ["solana-client", "solana-sdk", "solana-rpc-client", "solana-rpc-client-api", "solana-account-decoder", "solana-transaction-status", "ed25519-dalek"]
+coprocessor = ["valence-coprocessor-domain-prover"]
 
 [dependencies]
 # generic imports
@@ -35,7 +36,7 @@ neutron-std             = { version = "5.1.2", optional = true }
 ibc                     = { version = "0.57.0", optional = true }
 
 # coprocessor-specific imports
-valence-coprocessor-domain-prover = { git = "https://github.com/timewave-computer/valence-coprocessor-domain-prover.git", tag = "v0.3.1" }
+valence-coprocessor-domain-prover = { git = "https://github.com/timewave-computer/valence-coprocessor-domain-prover.git", tag = "v0.3.1", optional = true }
 
 # evm-specific imports
 alloy_signer_local = { package = "alloy-signer-local", version = "0.9.2", features = [
@@ -59,12 +60,12 @@ alloy = { version = "0.9.2", features = [
 ], optional = true }
 
 # solana-specific imports
-solana-client = { version = "2.0", optional = true }
-solana-sdk = { version = "2.0", optional = true }
-solana-rpc-client = { version = "2.0", optional = true }
-solana-rpc-client-api = { version = "2.0", optional = true }
-solana-account-decoder = { version = "2.0", optional = true }
-solana-transaction-status = { version = "2.0", optional = true }
+solana-client = { version = "2.1.6", optional = true }
+solana-sdk = { version = "2.1.6", optional = true }
+solana-rpc-client = { version = "2.1.6", optional = true }
+solana-rpc-client-api = { version = "2.1.6", optional = true }
+solana-account-decoder = { version = "2.1.6", optional = true }
+solana-transaction-status = { version = "2.1.6", optional = true }
 bs58 = "0.5.1"
 ed25519-dalek = { version = "2.0.0", optional = true }
 

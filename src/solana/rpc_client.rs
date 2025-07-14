@@ -80,8 +80,9 @@ pub trait SolanaRpcClient {
     /// Confirm a transaction
     async fn confirm_transaction(&self, signature: &Signature) -> anyhow::Result<bool> {
         let rpc_client = self.get_rpc_client();
-        let result = rpc_client.confirm_transaction_with_spinner(signature, &self.commitment()).await?;
-        Ok(result)
+        let recent_blockhash = rpc_client.get_latest_blockhash().await?;
+        rpc_client.confirm_transaction_with_spinner(signature, &recent_blockhash, self.commitment()).await?;
+        Ok(true)
     }
     
     /// Get slot (block height)
@@ -131,11 +132,9 @@ pub trait SolanaRpcClient {
             
             match rpc_client.get_signature_status(signature).await {
                 Ok(Some(status)) => {
-                    if let Some(result) = status {
-                        match result {
-                            Ok(()) => return Ok(true),
-                            Err(e) => return Err(anyhow::anyhow!("Transaction failed: {:?}", e)),
-                        }
+                    match status {
+                        Ok(()) => return Ok(true),
+                        Err(e) => return Err(anyhow::anyhow!("Transaction failed: {:?}", e)),
                     }
                 }
                 Ok(None) => {

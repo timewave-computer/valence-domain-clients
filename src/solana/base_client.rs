@@ -183,10 +183,10 @@ pub trait SolanaBaseClient: SolanaSigningClient {
     }
     
     /// Get epoch info
-    async fn get_epoch_info(&self) -> anyhow::Result<solana_rpc_client_api::response::EpochInfo> {
+    async fn get_epoch_info(&self) -> anyhow::Result<u64> {
         let rpc_client = self.get_rpc_client();
         let epoch_info = rpc_client.get_epoch_info().await?;
-        Ok(epoch_info)
+        Ok(epoch_info.epoch)
     }
     
     /// Get transaction count (similar to nonce in other chains)

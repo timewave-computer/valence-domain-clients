@@ -1,8 +1,10 @@
+#[cfg(feature = "evm")]
 use alloy::primitives::{Address, U256};
-use tonic::async_trait;
+use async_trait::async_trait;
 
 use super::base_client::ValenceIndexerBaseClient;
 
+#[cfg(feature = "evm")]
 #[async_trait]
 pub trait OneWayVaultIndexer: ValenceIndexerBaseClient {
     fn get_vault_addr(&self) -> String;
