@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 use valence_coprocessor_domain_prover::{
-    valence_coprocessor::{ValidatedDomainBlock, Witness},
+    valence_coprocessor::{ValidatedDomainBlock, WitnessCoprocessor},
     valence_coprocessor_client::{AddedDomainBlock, Client},
     Proof,
 };
@@ -50,7 +50,11 @@ impl CoprocessorBaseClient for CoprocessorClient {
         self.client.get_storage_file(controller, path).await
     }
 
-    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Vec<Witness>> {
+    async fn get_witnesses(
+        &self,
+        circuit: &str,
+        args: &Value,
+    ) -> anyhow::Result<WitnessCoprocessor> {
         self.client.get_witnesses(circuit, args).await
     }
 
@@ -66,7 +70,7 @@ impl CoprocessorBaseClient for CoprocessorClient {
         self.client.entrypoint(controller, args).await
     }
 
-    async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<ValidatedDomainBlock> {
+    async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<Value> {
         self.client.get_latest_domain_block(domain).await
     }
 
@@ -102,7 +106,7 @@ async fn client_deploy_domain_works() {
 
 #[tokio::test]
 async fn client_get_storage_file_works() {
-    let controller = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
+    let controller = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
     let path = "/var/share/proof.bin";
 
     CoprocessorClient::default()
@@ -113,7 +117,7 @@ async fn client_get_storage_file_works() {
 
 #[tokio::test]
 async fn client_get_witnesses_works() {
-    let circuit = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
+    let circuit = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
     let args = serde_json::json!({"value": 42});
 
     CoprocessorClient::default()
@@ -124,7 +128,7 @@ async fn client_get_witnesses_works() {
 
 #[tokio::test]
 async fn client_prove_works() {
-    let circuit = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
+    let circuit = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
     let args = serde_json::json!({"value": 42});
 
     let proof = CoprocessorClient::default()
@@ -140,14 +144,14 @@ async fn client_prove_works() {
 
 #[tokio::test]
 async fn client_get_vk_works() {
-    let circuit = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
+    let circuit = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
 
     CoprocessorClient::default().get_vk(circuit).await.unwrap();
 }
 
 #[tokio::test]
 async fn client_entrypoint_works() {
-    let controller = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
+    let controller = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
     let args = serde_json::json!({
         "payload": {
             "cmd": "store",
