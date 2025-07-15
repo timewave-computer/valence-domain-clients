@@ -7,8 +7,6 @@ pub mod ethereum;
 pub mod gaia;
 #[cfg(feature = "cosmos")]
 pub mod ibc_eureka_route_client;
-#[cfg(feature = "solana")]
-pub mod solana;
 #[cfg(feature = "cosmos")]
 pub mod lombard;
 #[cfg(feature = "cosmos")]
@@ -17,4 +15,6 @@ pub mod neutron;
 pub mod noble;
 #[cfg(feature = "cosmos")]
 pub mod osmosis;
+#[cfg(feature = "solana")]
+pub mod solana;
 pub mod valence_indexer;
