@@ -6,8 +6,8 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::Signature,
     signer::Signer,
-    system_instruction,
 };
+use solana_system_interface::{instruction as system_instruction};
 
 use std::str::FromStr;
 use log::{info, warn};

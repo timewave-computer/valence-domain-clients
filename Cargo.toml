@@ -12,7 +12,7 @@ default = ["test-utils"]
 test-utils = []
 cosmos = ["cosmrs", "cosmos-sdk-proto", "tonic", "neutron-std", "ibc", "reqwest"]
 evm = ["alloy", "alloy_signer_local", "alloy_primitives_encoder", "alloy_sol_types_encoder"]
-solana = ["solana-client", "solana-sdk", "solana-rpc-client", "solana-rpc-client-api", "solana-account-decoder", "solana-transaction-status", "ed25519-dalek"]
+solana = ["solana-client", "solana-sdk", "solana-rpc-client", "solana-rpc-client-api", "solana-account-decoder", "solana-transaction-status", "solana-system-interface", "ed25519-dalek"]
 coprocessor = ["valence-coprocessor-domain-prover"]
 
 [dependencies]
@@ -68,6 +68,7 @@ solana-rpc-client = { version = "2.1.6", optional = true }
 solana-rpc-client-api = { version = "2.1.6", optional = true }
 solana-account-decoder = { version = "2.1.6", optional = true }
 solana-transaction-status = { version = "2.1.6", optional = true }
+solana-system-interface = { version = "1.0.0", optional = true }
 bs58 = "0.5.1"
 ed25519-dalek = { version = "2.0.0", optional = true }
 
