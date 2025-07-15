@@ -10,7 +10,7 @@ description = "Client implementations for interacting with Valence Protocol doma
 [features]
 default = ["test-utils"]
 test-utils = []
-cosmos = ["cosmrs", "cosmos-sdk-proto", "tonic", "neutron-std", "ibc"]
+cosmos = ["cosmrs", "cosmos-sdk-proto", "tonic", "neutron-std", "ibc", "reqwest"]
 evm = ["alloy", "alloy_signer_local", "alloy_primitives_encoder", "alloy_sol_types_encoder"]
 solana = ["solana-client", "solana-sdk", "solana-rpc-client", "solana-rpc-client-api", "solana-account-decoder", "solana-transaction-status", "ed25519-dalek"]
 coprocessor = ["valence-coprocessor-domain-prover"]
@@ -28,12 +28,14 @@ thiserror          = "1.0.63"
 
 # cosmos-specific imports
 bip32                   = { version = "0.5", features = ["bip39"] }
+
 cosmrs                  = { version = "0.21.1", features = ["cosmwasm", "rpc", "grpc"], optional = true }
 cosmos-sdk-proto        = { version = "0.26.1", features = ["grpc-transport", "grpc"], optional = true }
 tonic                   = { version = "0.12.3", features = ["transport", "tls", "tls-native-roots"], optional = true }
 hex                     = "0.4.3"
 neutron-std             = { version = "5.1.2", optional = true }
 ibc                     = { version = "0.57.0", optional = true }
+reqwest                 = { version = "0.12", optional = true, features = ["json"] }
 
 # coprocessor-specific imports
 valence-coprocessor-domain-prover = { git = "https://github.com/timewave-computer/valence-coprocessor-domain-prover.git", tag = "v0.3.1", optional = true }

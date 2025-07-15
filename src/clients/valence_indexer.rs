@@ -139,6 +139,7 @@ impl OneWayVaultIndexer for OneWayVaultIndexerClient {
 }
 
 #[tokio::test]
+#[ignore = "requires live indexer service"]
 async fn indexer_works() {
     let vault_addr = "-";
     let api_key = "-";

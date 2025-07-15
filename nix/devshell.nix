@@ -14,7 +14,7 @@
       
       echo "Valence Domain Clients development environment loaded!"
       echo "Rust version: $(rustc --version)"
-      echo "Available features: test-utils, cosmos, evm, solana"
+      echo "Available features: test-utils, cosmos, evm, solana, coprocessor"
       echo "Build cores: $(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo '1')"
       echo ""
 
@@ -25,6 +25,7 @@
       echo "  nix build .#cosmos             # Build with cosmos feature only"
       echo "  nix build .#evm                # Build with evm feature only"
       echo "  nix build .#solana             # Build with solana feature only"
+      echo "  nix build .#coprocessor        # Build with coprocessor feature only"
       echo "  nix build .#all-features       # Build with all features (same as default)"
       echo "  # Compose features manually with .override { features = [...]; }"
       echo ""

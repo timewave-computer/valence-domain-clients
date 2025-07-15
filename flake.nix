@@ -220,9 +220,13 @@
             features = [ "solana" ];
           };
 
+          coprocessor = project.rootCrate.build.override {
+            features = [ "coprocessor" ];
+          };
+
           # All features package with maximum granularity
           all-features = project.rootCrate.build.override {
-            features = [ "test-utils" "cosmos" "evm" "solana" ];
+            features = [ "test-utils" "cosmos" "evm" "solana" "coprocessor" ];
           };
         };
       });

@@ -1,5 +1,5 @@
-#[cfg(feature = "evm")]
-use alloy::transports::http::reqwest;
+#[cfg(feature = "cosmos")]
+use reqwest;
 use serde_json::Value;
 
 #[derive(Debug, Default, Clone)]

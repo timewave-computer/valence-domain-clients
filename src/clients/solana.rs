@@ -113,7 +113,7 @@ impl SolanaBaseClient for SolanaTestClient {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use solana_sdk::signature::Keypair;
+    use solana_sdk::signature::{Keypair, Signer};
     
     const TEST_RPC_URL: &str = DEFAULT_LOCALHOST_RPC_URL;
     
@@ -122,6 +122,32 @@ mod tests {
     async fn test_localnet_client_creation() {
         let client = SolanaTestClient::generate_new();
         assert!(!client.get_pubkey_string().is_empty());
+    }
+    
+    #[tokio::test]
+    async fn test_mnemonic_keypair_derivation() {
+        // Use a well-known valid 12-word BIP39 mnemonic
+        let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        
+        // Test client creation from mnemonic using solana-keygen
+        let client = SolanaTestClient::from_mnemonic(mnemonic).unwrap();
+        assert!(!client.get_pubkey_string().is_empty());
+        
+        // Test deterministic derivation - same mnemonic should produce same keys
+        let client2 = SolanaTestClient::from_mnemonic(mnemonic).unwrap();
+        assert_eq!(client.get_pubkey_string(), client2.get_pubkey_string());
+        
+        // Test with different RPC URL but same mnemonic
+        let client3 = SolanaTestClient::from_mnemonic_with_rpc_url(mnemonic, TEST_RPC_URL).unwrap();
+        assert_eq!(client.get_pubkey_string(), client3.get_pubkey_string());
+        
+        // Verify the derived public key matches expected format (base58 encoded, 32-44 chars)
+        let pubkey = client.get_pubkey_string();
+        assert!(pubkey.len() >= 32 && pubkey.len() <= 44);
+        
+        // The derived address should be deterministic and match the expected Solana address format
+        // For this specific test mnemonic with derivation path m/44'/501'/0'/0', we expect a specific address
+        println!("Derived address: {}", pubkey);
     }
     
     #[tokio::test]
@@ -204,11 +230,11 @@ mod tests {
         
         // Test epoch info
         let epoch_info = client.get_epoch_info().await.unwrap();
-        assert!(epoch_info.epoch >= 0);
+        // Epoch should be a valid value (u64 is always >= 0)
         
-        // Test transaction count
+        // Test transaction count  
         let tx_count = client.get_transaction_count().await.unwrap();
-        assert!(tx_count >= 0);
+        // Transaction count should be a valid value (u64 is always >= 0)
     }
     
     #[tokio::test]

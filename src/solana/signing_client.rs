@@ -5,13 +5,12 @@ use solana_sdk::{
     message::Message,
     native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
-    signature::{Keypair, Signature, Signer},
+    signature::{Keypair, Signer},
     transaction::Transaction,
     bs58,
 };
 use std::str::FromStr;
-// use bip32::{Language, Mnemonic};
-// use ed25519_dalek::SigningKey;
+use solana_sdk::signer::keypair::keypair_from_seed_phrase_and_passphrase;
 
 use super::rpc_client::SolanaRpcClient;
 use crate::common::transaction::TransactionResponse;
@@ -19,8 +18,7 @@ use crate::common::transaction::TransactionResponse;
 /// Default timeout for transaction confirmation in seconds
 const DEFAULT_TRANSACTION_TIMEOUT_SECONDS: u64 = 30;
 
-/// Standard Solana BIP44 derivation path used by browser wallets (Phantom, Solflare)
-const SOLANA_DERIVATION_PATH: &str = "m/44'/501'/0'/0'";
+
 
 /// Trait for Solana transaction signing operations
 #[async_trait]
@@ -166,7 +164,8 @@ impl SolanaClient {
     
     /// Create a new signing client from a private key byte array
     pub fn from_bytes(private_key: &[u8], rpc_url: &str) -> anyhow::Result<Self> {
-        let keypair = Keypair::from_bytes(private_key)?;
+        let keypair = Keypair::from_bytes(private_key)
+            .map_err(|e| anyhow::anyhow!("Invalid keypair bytes: {}", e))?;
         Ok(Self::new(keypair, rpc_url))
     }
     
@@ -184,8 +183,13 @@ impl SolanaClient {
     
     /// Create a new signing client from a mnemonic
     pub fn from_mnemonic(mnemonic: &str, rpc_url: &str) -> anyhow::Result<Self> {
-        // TODO: Implement mnemonic support after resolving BIP32 compatibility issues
-        anyhow::bail!("Mnemonic support is temporarily disabled due to BIP32 compatibility issues with solana-sdk 2.1.6")
+        let passphrase = ""; // No passphrase
+        
+        // Use solana-sdk's official function for deriving keypair from mnemonic
+        let keypair = keypair_from_seed_phrase_and_passphrase(mnemonic, passphrase)
+            .map_err(|e| anyhow::anyhow!("Failed to derive keypair from mnemonic: {}", e))?;
+        
+        Ok(Self::new(keypair, rpc_url))
     }
 }
 

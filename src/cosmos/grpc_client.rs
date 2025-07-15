@@ -1,5 +1,5 @@
-#[cfg(feature = "evm")]
-use alloy::transports::http::reqwest;
+#[cfg(feature = "cosmos")]
+use reqwest;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::{SimulateRequest, SimulateResponse};
 use cosmrs::{
     tx::{BodyBuilder, Fee, SignDoc, SignerInfo},

@@ -7,8 +7,8 @@ use solana_sdk::{
     signature::Signature,
     signer::Signer,
     system_instruction,
-    transaction::Transaction,
 };
+
 use std::str::FromStr;
 use log::{info, warn};
 
