@@ -95,15 +95,9 @@ pub trait SolanaSigningClient: SolanaRpcClient {
         self.transfer_sol(to, amount_lamports).await
     }
     
-    /// Get SOL balance in lamports
+    /// Get SOL balance in lamports for own keypair
     async fn get_sol_balance(&self) -> anyhow::Result<u64> {
         let pubkey = self.get_pubkey();
-        self.get_balance(&pubkey).await
-    }
-    
-    /// Get SOL balance for a specific address
-    async fn get_sol_balance_for_address(&self, address: &str) -> anyhow::Result<u64> {
-        let pubkey = Pubkey::from_str(address)?;
         self.get_balance(&pubkey).await
     }
     

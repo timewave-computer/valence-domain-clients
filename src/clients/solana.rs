@@ -1,9 +1,13 @@
 // Solana client for interacting with any Solana cluster
 use crate::solana::{
     base_client::SolanaBaseClient,
+    query_client::SolanaQueryClient,
     rpc_client::SolanaRpcClient,
     signing_client::SolanaSigningClient,
 };
+
+#[cfg(test)]
+use crate::solana::query_client::SolanaReadOnlyClient;
 use async_trait::async_trait;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
@@ -119,6 +123,9 @@ impl SolanaSigningClient for SolanaClient {
 }
 
 #[async_trait]
+impl SolanaQueryClient for SolanaClient {}
+
+#[async_trait]
 impl SolanaBaseClient for SolanaClient {}
 
 #[cfg(test)]
@@ -157,6 +164,30 @@ mod tests {
         // The derived address should be deterministic and match the expected Solana address format
         // For this specific test mnemonic with derivation path m/44'/501'/0'/0', we expect a specific address
         println!("Derived address: {}", pubkey);
+    }
+    
+    #[tokio::test]
+    #[ignore = "requires local solana test validator"]
+    async fn test_read_only_client_queries() {
+        // Create a read-only client (no keypair required)
+        let read_only_client = SolanaReadOnlyClient::new(TEST_RPC_URL);
+        
+        // Test that we can query blockchain state without signing capabilities
+        let block_height = read_only_client.latest_block_height().await.unwrap();
+        assert!(block_height > 0, "Should get a valid block height");
+        
+        let _transaction_count = read_only_client.get_transaction_count().await.unwrap();
+        // Transaction count should be retrievable
+        
+        let cluster_nodes = read_only_client.get_cluster_nodes().await.unwrap();
+        assert!(!cluster_nodes.is_empty(), "Should have at least one cluster node");
+        
+        // Test querying a specific address balance
+        let test_address = "EHqmfkN89RJ7Y33CXM6uCzhVeuywHoJXZZLszBHHZy7o";
+        let _balance = read_only_client.get_sol_balance_for_address(test_address).await.unwrap();
+        // Balance should be retrievable (even if zero)
+        
+        println!("✅ Read-only client can query blockchain state without keypair");
     }
     
     #[tokio::test]
@@ -264,7 +295,7 @@ mod tests {
         });
         
         // Poll for balance
-        let balance = client2.poll_until_expected_sol_balance(&client2.get_pubkey_string(), 0.1, 1, 10).await.unwrap();
+        let balance = client2.poll_until_expected_sol_balance(0.1, 1, 10).await.unwrap();
         assert!(balance >= 0.1);
     }
 } 

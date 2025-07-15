@@ -35450,6 +35450,11 @@ rec {
             optional = true;
           }
           {
+            name = "solana-system-interface";
+            packageId = "solana-system-interface";
+            optional = true;
+          }
+          {
             name = "solana-transaction-status";
             packageId = "solana-transaction-status";
             optional = true;
@@ -35524,12 +35529,13 @@ rec {
           "serde-wasm-bindgen" = [ "dep:serde-wasm-bindgen" ];
           "sha2" = [ "dep:sha2" ];
           "sha3" = [ "dep:sha3" ];
-          "solana" = [ "solana-client" "solana-sdk" "solana-rpc-client" "solana-rpc-client-api" "solana-account-decoder" "solana-transaction-status" "ed25519-dalek" "k256" "reqwest" "tokio" "bs58" ];
+          "solana" = [ "solana-client" "solana-sdk" "solana-rpc-client" "solana-rpc-client-api" "solana-account-decoder" "solana-transaction-status" "solana-system-interface" "ed25519-dalek" "k256" "reqwest" "tokio" "bs58" ];
           "solana-account-decoder" = [ "dep:solana-account-decoder" ];
           "solana-client" = [ "dep:solana-client" ];
           "solana-rpc-client" = [ "dep:solana-rpc-client" ];
           "solana-rpc-client-api" = [ "dep:solana-rpc-client-api" ];
           "solana-sdk" = [ "dep:solana-sdk" ];
+          "solana-system-interface" = [ "dep:solana-system-interface" ];
           "solana-transaction-status" = [ "dep:solana-transaction-status" ];
           "test-utils" = [ "tokio" ];
           "tokio" = [ "dep:tokio" ];
@@ -35540,7 +35546,7 @@ rec {
           "wasm-bindgen-futures" = [ "dep:wasm-bindgen-futures" ];
           "web-sys" = [ "dep:web-sys" ];
         };
-        resolvedDefaultFeatures = [ "alloy" "alloy_primitives_encoder" "alloy_signer_local" "alloy_sol_types_encoder" "bip39" "bs58" "coins-bip32" "coins-bip39" "console_error_panic_hook" "coprocessor" "cosmos" "cosmos-sdk-proto" "cosmrs" "default" "ed25519-dalek" "evm" "getrandom" "ibc" "js-sys" "k256" "neutron-std" "rand" "reqwest" "ripemd" "serde-wasm-bindgen" "sha2" "sha3" "solana" "solana-account-decoder" "solana-client" "solana-rpc-client" "solana-rpc-client-api" "solana-sdk" "solana-transaction-status" "test-utils" "tokio" "tonic" "valence-coprocessor-domain-prover" "wasm" "wasm-bindgen" "wasm-bindgen-futures" "web-sys" ];
+        resolvedDefaultFeatures = [ "alloy" "alloy_primitives_encoder" "alloy_signer_local" "alloy_sol_types_encoder" "bip39" "bs58" "coins-bip32" "coins-bip39" "console_error_panic_hook" "coprocessor" "cosmos" "cosmos-sdk-proto" "cosmrs" "default" "ed25519-dalek" "evm" "getrandom" "ibc" "js-sys" "k256" "neutron-std" "rand" "reqwest" "ripemd" "serde-wasm-bindgen" "sha2" "sha3" "solana" "solana-account-decoder" "solana-client" "solana-rpc-client" "solana-rpc-client-api" "solana-sdk" "solana-system-interface" "solana-transaction-status" "test-utils" "tokio" "tonic" "valence-coprocessor-domain-prover" "wasm" "wasm-bindgen" "wasm-bindgen-futures" "web-sys" ];
       };
       "valuable" = rec {
         crateName = "valuable";
