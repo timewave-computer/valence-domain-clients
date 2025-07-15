@@ -7,10 +7,8 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::Transaction,
-    bs58,
 };
 use std::str::FromStr;
-use solana_sdk::signer::keypair::keypair_from_seed_phrase_and_passphrase;
 
 use super::rpc_client::SolanaRpcClient;
 use crate::common::transaction::TransactionResponse;
@@ -140,77 +138,4 @@ pub trait SolanaSigningClient: SolanaRpcClient {
     }
 }
 
-/// Implementation of signing client that wraps a keypair
-pub struct SolanaClient {
-    keypair: Keypair,
-    rpc_client: solana_client::nonblocking::rpc_client::RpcClient,
-    rpc_url: String,
-    commitment: solana_sdk::commitment_config::CommitmentConfig,
-}
-
-impl SolanaClient {
-    /// Create a new signing client from a keypair
-    pub fn new(keypair: Keypair, rpc_url: &str) -> Self {
-        let rpc_client = solana_client::nonblocking::rpc_client::RpcClient::new(rpc_url.to_string());
-        let commitment = solana_sdk::commitment_config::CommitmentConfig::confirmed();
-        
-        Self {
-            keypair,
-            rpc_client,
-            rpc_url: rpc_url.to_string(),
-            commitment,
-        }
-    }
-    
-    /// Create a new signing client from a private key byte array
-    pub fn from_bytes(private_key: &[u8], rpc_url: &str) -> anyhow::Result<Self> {
-        let keypair = Keypair::from_bytes(private_key)
-            .map_err(|e| anyhow::anyhow!("Invalid keypair bytes: {}", e))?;
-        Ok(Self::new(keypair, rpc_url))
-    }
-    
-    /// Create a new signing client from a base58 encoded private key
-    pub fn from_base58(private_key: &str, rpc_url: &str) -> anyhow::Result<Self> {
-        let bytes = bs58::decode(private_key).into_vec()?;
-        Self::from_bytes(&bytes, rpc_url)
-    }
-    
-    /// Generate a new random keypair
-    pub fn generate_new(rpc_url: &str) -> Self {
-        let keypair = Keypair::new();
-        Self::new(keypair, rpc_url)
-    }
-    
-    /// Create a new signing client from a mnemonic
-    pub fn from_mnemonic(mnemonic: &str, rpc_url: &str) -> anyhow::Result<Self> {
-        let passphrase = ""; // No passphrase
-        
-        // Use solana-sdk's official function for deriving keypair from mnemonic
-        let keypair = keypair_from_seed_phrase_and_passphrase(mnemonic, passphrase)
-            .map_err(|e| anyhow::anyhow!("Failed to derive keypair from mnemonic: {}", e))?;
-        
-        Ok(Self::new(keypair, rpc_url))
-    }
-}
-
-#[async_trait]
-impl SolanaRpcClient for SolanaClient {
-    fn get_rpc_client(&self) -> &solana_client::nonblocking::rpc_client::RpcClient {
-        &self.rpc_client
-    }
-    
-    fn rpc_url(&self) -> &str {
-        &self.rpc_url
-    }
-    
-    fn commitment(&self) -> solana_sdk::commitment_config::CommitmentConfig {
-        self.commitment
-    }
-}
-
-#[async_trait]
-impl SolanaSigningClient for SolanaClient {
-    fn get_keypair(&self) -> &Keypair {
-        &self.keypair
-    }
-} 
+ 
