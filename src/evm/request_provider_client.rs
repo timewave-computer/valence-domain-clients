@@ -4,7 +4,7 @@ use alloy::{
     transports::http::reqwest,
 };
 use alloy_signer_local::PrivateKeySigner;
-use tonic::async_trait;
+use async_trait::async_trait;
 
 use super::base_client::CustomProvider;
 

@@ -3,7 +3,7 @@ use crate::evm::request_provider_client::RequestProviderClient;
 
 use alloy_signer_local::coins_bip39::English;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner};
-use tonic::async_trait;
+use async_trait::async_trait;
 
 pub struct EthereumClient {
     rpc_url: String,

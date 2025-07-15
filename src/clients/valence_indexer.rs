@@ -1,14 +1,20 @@
+#[cfg(feature = "evm")]
 use std::str::FromStr;
 
+#[cfg(feature = "evm")]
 use alloy::{
     primitives::{Address, U256},
     transports::http::reqwest,
 };
+#[cfg(feature = "evm")]
 use serde_json::Value;
-use tonic::async_trait;
+#[cfg(feature = "evm")]
+use async_trait::async_trait;
 
+#[cfg(feature = "evm")]
 use crate::indexer::{base_client::ValenceIndexerBaseClient, one_way_vault::OneWayVaultIndexer};
 
+#[cfg(feature = "evm")]
 #[derive(Debug, Default, Clone)]
 pub struct OneWayVaultIndexerClient {
     api_key: String,
@@ -16,6 +22,7 @@ pub struct OneWayVaultIndexerClient {
     vault_addr: String,
 }
 
+#[cfg(feature = "evm")]
 impl OneWayVaultIndexerClient {
     pub fn new(indexer_url: &str, api_key: &str, vault_addr: &str) -> Self {
         Self {
@@ -26,6 +33,7 @@ impl OneWayVaultIndexerClient {
     }
 }
 
+#[cfg(feature = "evm")]
 #[async_trait]
 impl ValenceIndexerBaseClient for OneWayVaultIndexerClient {
     fn get_api_key(&self) -> String {
@@ -41,6 +49,7 @@ impl ValenceIndexerBaseClient for OneWayVaultIndexerClient {
     }
 }
 
+#[cfg(feature = "evm")]
 #[async_trait]
 impl OneWayVaultIndexer for OneWayVaultIndexerClient {
     fn get_vault_addr(&self) -> String {
@@ -130,6 +139,7 @@ impl OneWayVaultIndexer for OneWayVaultIndexerClient {
 }
 
 #[tokio::test]
+#[ignore = "requires live indexer service"]
 async fn indexer_works() {
     let vault_addr = "-";
     let api_key = "-";

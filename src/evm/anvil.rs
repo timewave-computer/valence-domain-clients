@@ -3,7 +3,7 @@ use alloy::providers::ext::AnvilApi;
 use alloy::providers::Provider;
 use alloy::rpc::types::{TransactionReceipt, TransactionRequest};
 use std::str::FromStr;
-use tonic::async_trait;
+use async_trait::async_trait;
 
 use crate::evm::base_client::EvmBaseClient;
 

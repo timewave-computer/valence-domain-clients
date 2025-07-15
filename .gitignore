@@ -5,6 +5,9 @@ result
 .cargo/
 .rustup
 
+# Env
+.envrc
+
 # Generated proto files
 proto/
 src/proto/

@@ -112,6 +112,7 @@ async fn client_get_storage_file_works() {
 }
 
 #[tokio::test]
+#[ignore = "requires live coprocessor service"]
 async fn client_get_witnesses_works() {
     let circuit = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
     let args = serde_json::json!({"value": 42});
@@ -123,6 +124,7 @@ async fn client_get_witnesses_works() {
 }
 
 #[tokio::test]
+#[ignore = "requires live coprocessor service"]
 async fn client_prove_works() {
     let circuit = "7e0207a1fa0a979282b7246c028a6a87c25bc60f7b6d5230e943003634e897fd";
     let args = serde_json::json!({"value": 42});
