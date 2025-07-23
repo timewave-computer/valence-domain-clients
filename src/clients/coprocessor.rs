@@ -1,26 +1,166 @@
 use async_trait::async_trait;
-use serde_json::Value;
-use valence_coprocessor_domain_prover::{
-    valence_coprocessor::{ValidatedDomainBlock, WitnessCoprocessor},
-    valence_coprocessor_client::{AddedDomainBlock, Client},
-    Proof,
-};
+use msgpacker::Unpackable as _;
+use serde_json::{json, Value};
+use tokio::time::{self, Duration};
+use uuid::Uuid;
 
-use crate::coprocessor::base_client::CoprocessorBaseClient;
+use crate::coprocessor::base_client::{Base64, CoprocessorBaseClient, DomainProof, Proof};
 
 /// A co-processor proving client.
 ///
 /// By default, it connects to the default public instance of the service.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct CoprocessorClient {
-    client: Client,
+    /// The co-processor address.
+    pub coprocessor: String,
+}
+
+impl Default for CoprocessorClient {
+    fn default() -> Self {
+        Self::new(Self::DEFAULT_COPROCESSOR.into())
+    }
 }
 
 impl CoprocessorClient {
+    /// The default co-processor public address.
+    pub const DEFAULT_COPROCESSOR: &str = "https://service.coprocessor.valence.zone";
+
+    /// The deployed domain prover circuit id.
+    pub const DOMAIN_CIRCUIT: &str =
+        "cf4d4c2f3bf4ad0114091ea8023ff2456d5572e68bbc4d4e91bfa8f4a6f5d502";
+
+    pub fn new(coprocessor: String) -> Self {
+        Self { coprocessor }
+    }
+
     /// Starts a client that connects to a localhost co-processor
     pub fn local() -> Self {
         Self {
-            client: Client::local(),
+            coprocessor: "http://127.0.0.1:37281".into(),
+        }
+    }
+
+    /// Computes the URI of the co-processor.
+    pub fn uri<P: AsRef<str>>(&self, path: P) -> String {
+        format!("{}/api/{}", self.coprocessor, path.as_ref(),)
+    }
+
+    /// Fetches a proof from the queue, returning if present.
+    pub async fn get_proof_from_storage<C: AsRef<str>, P: AsRef<str>>(
+        &self,
+        circuit: C,
+        path: P,
+    ) -> anyhow::Result<Option<Proof>> {
+        let uri = format!("registry/controller/{}/storage/fs", circuit.as_ref());
+        let uri = self.uri(uri);
+
+        let response = reqwest::Client::new()
+            .post(uri)
+            .json(&json!({
+                "path": path.as_ref()
+            }))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
+
+        let data = match response.get("data") {
+            Some(d) => d,
+            _ => return Ok(None),
+        };
+
+        let data = data
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("unexpected data format"))?;
+
+        if data.is_empty() {
+            return Ok(None);
+        }
+
+        let data = Base64::decode(data)?;
+        let data: Value = serde_json::from_slice(&data)?;
+
+        anyhow::ensure!(
+            data.get("success")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            "the proof was computed incorrectly"
+        );
+
+        let proof = data
+            .get("proof")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow::anyhow!("failed to get proof from response"))?;
+
+        let bytes = Base64::decode(proof)?;
+        let proof = Proof::unpack(&bytes)
+            .map_err(|e| anyhow::anyhow!("failed to unpack proof: {e}"))?
+            .1;
+
+        Ok(Some(proof))
+    }
+
+    async fn _prove(&self, circuit: &str, path: &str, frequency: u64) -> anyhow::Result<Proof> {
+        let frequency = Duration::from_millis(frequency);
+
+        loop {
+            if let Some(p) = self.get_proof_from_storage(circuit, path).await? {
+                return Ok(p);
+            }
+
+            time::sleep(frequency).await;
+        }
+    }
+
+    async fn get_single_proof(
+        &self,
+        circuit: &str,
+        args: &Value,
+        root: Option<&str>,
+    ) -> anyhow::Result<Proof> {
+        let retries = 25;
+        let frequency = 2000;
+
+        let uri = match root {
+            Some(r) => format!("registry/controller/{circuit}/prove/{r}"),
+            None => format!("registry/controller/{circuit}/prove"),
+        };
+        let uri = self.uri(uri);
+
+        let output = Uuid::new_v4();
+        let output = output.as_u128().to_le_bytes();
+        let output = hex::encode(output);
+        let path = format!("/var/share/proofs/{}.bin", &output[..8]);
+        let args = json!({
+            "args": args,
+            "payload": {
+                "cmd": "store",
+                "path": &path
+            }
+        });
+
+        reqwest::Client::new()
+            .post(uri)
+            .json(&args)
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let duration = retries * frequency;
+        let duration = Duration::from_millis(duration);
+        let duration = time::sleep(duration);
+
+        tokio::pin!(duration);
+
+        tokio::select! {
+            r = self._prove(circuit, &path, frequency) => {
+                r
+            }
+
+            _ = &mut duration => {
+                anyhow::bail!("proof timeout exceeded");
+            }
         }
     }
 }
@@ -28,7 +168,19 @@ impl CoprocessorClient {
 #[async_trait]
 impl CoprocessorBaseClient for CoprocessorClient {
     async fn stats(&self) -> anyhow::Result<Value> {
-        self.client.stats().await
+        let uri = self.uri("stats");
+
+        Ok(reqwest::Client::new().get(uri).send().await?.json().await?)
+    }
+
+    async fn root(&self) -> anyhow::Result<String> {
+        let uri = self.uri("root");
+        let root: Value = reqwest::Client::new().get(uri).send().await?.json().await?;
+
+        root.get("historical")
+            .and_then(Value::as_str)
+            .map(Into::into)
+            .ok_or_else(|| anyhow::anyhow!("invalid root type"))
     }
 
     async fn deploy_controller(
@@ -37,59 +189,169 @@ impl CoprocessorBaseClient for CoprocessorClient {
         circuit: &[u8],
         nonce: Option<u64>,
     ) -> anyhow::Result<String> {
-        self.client
-            .deploy_controller(controller, circuit, nonce)
-            .await
+        let uri = self.uri("registry/controller");
+
+        reqwest::Client::new()
+            .post(uri)
+            .json(&json!({
+                "controller": Base64::encode(controller),
+                "circuit": Base64::encode(circuit),
+                "nonce": nonce,
+            }))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?
+            .get("controller")
+            .and_then(Value::as_str)
+            .map(String::from)
+            .ok_or_else(|| anyhow::anyhow!("invalid response"))
     }
 
     async fn deploy_domain(&self, domain: &str, controller: &[u8]) -> anyhow::Result<String> {
-        self.client.deploy_domain(domain, controller).await
+        let uri = self.uri("registry/domain");
+
+        reqwest::Client::new()
+            .post(uri)
+            .json(&json!({
+                "name": domain,
+                "controller": Base64::encode(controller),
+            }))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?
+            .get("domain")
+            .and_then(Value::as_str)
+            .map(String::from)
+            .ok_or_else(|| anyhow::anyhow!("invalid response"))
     }
 
     async fn get_storage_file(&self, controller: &str, path: &str) -> anyhow::Result<Vec<u8>> {
-        self.client.get_storage_file(controller, path).await
+        let uri = format!("registry/controller/{}/storage/fs", controller);
+        let uri = self.uri(uri);
+
+        reqwest::Client::new()
+            .post(uri)
+            .json(&json!({
+                "path": path,
+            }))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?
+            .get("data")
+            .and_then(Value::as_str)
+            .map(String::from)
+            .ok_or_else(|| anyhow::anyhow!("invalid response"))
+            .and_then(Base64::decode)
     }
 
-    async fn get_witnesses(
-        &self,
-        circuit: &str,
-        args: &Value,
-    ) -> anyhow::Result<WitnessCoprocessor> {
-        self.client.get_witnesses(circuit, args).await
+    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Value> {
+        let uri = format!("registry/controller/{}/witnesses", circuit);
+        let uri = self.uri(uri);
+
+        let data = reqwest::Client::new()
+            .post(uri)
+            .json(&json!({
+                "args": args
+            }))
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
+
+        data.get("witnesses")
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("invalid witnesses response"))
     }
 
-    async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<Proof> {
-        Proof::prove(&self.client, circuit, args).await
+    async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<DomainProof> {
+        let root = self.root().await?;
+        let empty = Value::default();
+
+        let program = self.get_single_proof(circuit, args, Some(&root));
+        let domain = self.get_single_proof(Self::DOMAIN_CIRCUIT, &empty, Some(&root));
+
+        let (program, domain) = tokio::join!(program, domain);
+
+        let program = program?;
+        let domain = domain?;
+
+        Ok(DomainProof { program, domain })
     }
 
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>> {
-        self.client.get_vk(circuit).await
+        let uri = format!("registry/controller/{}/vk", circuit);
+        let uri = self.uri(uri);
+
+        let data = reqwest::Client::new()
+            .get(uri)
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
+
+        data.get("base64")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow::anyhow!("invalid vk response"))
+            .and_then(Base64::decode)
+    }
+
+    async fn get_domain_vk(&self) -> anyhow::Result<Vec<u8>> {
+        self.get_vk(Self::DOMAIN_CIRCUIT).await
     }
 
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value> {
-        self.client.entrypoint(controller, args).await
+        let uri = format!("registry/controller/{}/entrypoint", controller);
+        let uri = self.uri(uri);
+
+        let data = reqwest::Client::new()
+            .post(uri)
+            .json(args)
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
+
+        data.get("ret")
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("no response provided"))
     }
 
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<Value> {
-        self.client.get_latest_domain_block(domain).await
+        let uri = format!("registry/domain/{}/latest", domain);
+        let uri = self.uri(uri);
+
+        Ok(reqwest::Client::new().get(uri).send().await?.json().await?)
     }
 
-    async fn add_domain_block(
-        &self,
-        domain: &str,
-        args: &Value,
-    ) -> anyhow::Result<AddedDomainBlock> {
-        self.client.add_domain_block(domain, args).await
+    async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value> {
+        let uri = format!("registry/domain/{}", domain);
+        let uri = self.uri(uri);
+
+        Ok(reqwest::Client::new()
+            .post(uri)
+            .json(&args)
+            .send()
+            .await?
+            .json()
+            .await?)
     }
 }
 
 #[tokio::test]
-async fn client_stats_works() {
+async fn coprocessor_stats_works() {
     CoprocessorClient::default().stats().await.unwrap();
 }
 
 #[tokio::test]
-async fn client_deploy_controller_works() {
+async fn coprocessor_root_works() {
+    CoprocessorClient::default().root().await.unwrap();
+}
+
+#[tokio::test]
+async fn coprocessor_deploy_controller_works() {
     CoprocessorClient::default()
         .deploy_controller(b"foo", b"bar", Some(15))
         .await
@@ -97,7 +359,7 @@ async fn client_deploy_controller_works() {
 }
 
 #[tokio::test]
-async fn client_deploy_domain_works() {
+async fn coprocessor_deploy_domain_works() {
     CoprocessorClient::default()
         .deploy_domain("foo", b"bar")
         .await
@@ -105,8 +367,8 @@ async fn client_deploy_domain_works() {
 }
 
 #[tokio::test]
-async fn client_get_storage_file_works() {
-    let controller = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
+async fn coprocessor_get_storage_file_works() {
+    let controller = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
     let path = "/var/share/proof.bin";
 
     CoprocessorClient::default()
@@ -116,8 +378,8 @@ async fn client_get_storage_file_works() {
 }
 
 #[tokio::test]
-async fn client_get_witnesses_works() {
-    let circuit = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
+async fn coprocessor_get_witnesses_works() {
+    let circuit = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
     let args = serde_json::json!({"value": 42});
 
     CoprocessorClient::default()
@@ -127,8 +389,8 @@ async fn client_get_witnesses_works() {
 }
 
 #[tokio::test]
-async fn client_prove_works() {
-    let circuit = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
+async fn coprocessor_prove_works() {
+    let circuit = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
     let args = serde_json::json!({"value": 42});
 
     let proof = CoprocessorClient::default()
@@ -136,22 +398,23 @@ async fn client_prove_works() {
         .await
         .unwrap();
 
-    let program = proof.program.decode().unwrap().1;
-    let domain = proof.domain.decode().unwrap().1;
+    let program = Base64::decode(proof.program.inputs).unwrap();
+    let domain = Base64::decode(proof.domain.inputs).unwrap();
 
-    assert_eq!(&program[..32], &domain[..32]);
+    assert_eq!(&program[32..], &43u64.to_le_bytes());
+    assert_eq!(&program[..32], &domain);
 }
 
 #[tokio::test]
-async fn client_get_vk_works() {
-    let circuit = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
+async fn coprocessor_get_vk_works() {
+    let circuit = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
 
     CoprocessorClient::default().get_vk(circuit).await.unwrap();
 }
 
 #[tokio::test]
-async fn client_entrypoint_works() {
-    let controller = "d840ffde7bc7ad6004b4b0c2a7d66f5f87d5f9d7b649a9e75ab55becf55609c8";
+async fn coprocessor_entrypoint_works() {
+    let controller = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
     let args = serde_json::json!({
         "payload": {
             "cmd": "store",
@@ -166,9 +429,9 @@ async fn client_entrypoint_works() {
 }
 
 #[tokio::test]
-async fn client_get_latest_domain_block_works() {
+async fn coprocessor_get_latest_domain_block_works() {
     CoprocessorClient::default()
-        .get_latest_domain_block("ethereum-alpha")
+        .get_latest_domain_block("ethereum-electra-alpha")
         .await
         .unwrap();
 }
