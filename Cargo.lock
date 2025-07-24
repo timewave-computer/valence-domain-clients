@@ -1626,17 +1626,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "buf-fs"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5180c938efd7f874939eaaf27e7e7348c881c3e539938b079a995e8e50ec0a86"
-dependencies = [
- "anyhow",
- "embedded-sdmmc",
- "relative-path",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2619,23 +2608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "embedded-hal"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
-
-[[package]]
-name = "embedded-sdmmc"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1132a10f327a9dff9d0629124e8b26cb2b3a930ab3dfedbadd295c107955e92"
-dependencies = [
- "byteorder",
- "embedded-hal",
- "heapless",
-]
-
-[[package]]
 name = "encode_unicode"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3142,15 +3114,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hash32"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3185,16 +3148,6 @@ dependencies = [
  "equivalent",
  "foldhash",
  "serde",
-]
-
-[[package]]
-name = "heapless"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
-dependencies = [
- "hash32",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -5681,15 +5634,6 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
-
-[[package]]
-name = "relative-path"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bca40a312222d8ba74837cb474edef44b37f561da5f773981007a10bbaa992b0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "reqwest"
@@ -10072,53 +10016,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "valence-coprocessor"
-version = "0.3.7"
-source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.3.7#5e169394898e805d6d7cac3a548c93ae7d6a0356"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "blake3",
- "buf-fs",
- "hashbrown 0.15.4",
- "msgpacker",
- "reqwest 0.12.22",
- "serde",
- "serde_json",
- "tracing",
- "zerocopy",
-]
-
-[[package]]
-name = "valence-coprocessor-client"
-version = "0.3.7"
-source = "git+https://github.com/timewave-computer/valence-coprocessor.git?tag=v0.3.7#5e169394898e805d6d7cac3a548c93ae7d6a0356"
-dependencies = [
- "anyhow",
- "hex",
- "reqwest 0.12.22",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "uuid 1.17.0",
- "valence-coprocessor",
-]
-
-[[package]]
-name = "valence-coprocessor-domain-prover"
-version = "0.3.7"
-source = "git+https://github.com/timewave-computer/valence-coprocessor-domain-prover.git?tag=v0.3.7#e71bc2322a804d4b43aa42a3eb6f7bf146569778"
-dependencies = [
- "anyhow",
- "hex",
- "msgpacker",
- "serde_json",
- "valence-coprocessor",
- "valence-coprocessor-client",
-]
-
-[[package]]
 name = "valence-domain-clients"
 version = "0.1.0"
 dependencies = [
@@ -10128,6 +10025,7 @@ dependencies = [
  "alloy-sol-types 0.7.7",
  "anyhow",
  "async-trait",
+ "base64 0.22.1",
  "bip32",
  "bs58",
  "cosmos-sdk-proto 0.26.1",
@@ -10136,8 +10034,10 @@ dependencies = [
  "hex",
  "ibc",
  "log",
+ "msgpacker",
  "neutron-std",
  "prost 0.13.5",
+ "reqwest 0.12.22",
  "serde",
  "serde_json",
  "solana-account-decoder",
@@ -10149,7 +10049,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tonic",
- "valence-coprocessor-domain-prover",
+ "uuid 1.17.0",
 ]
 
 [[package]]

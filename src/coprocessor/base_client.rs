@@ -1,15 +1,50 @@
 use async_trait::async_trait;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use msgpacker::MsgPacker;
 use serde_json::Value;
-use valence_coprocessor_domain_prover::{
-    valence_coprocessor::{ValidatedDomainBlock, WitnessCoprocessor},
-    valence_coprocessor_client::AddedDomainBlock,
-    Proof,
-};
+
+/// A ZK proven circuit.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, MsgPacker)]
+pub struct Proof {
+    /// The base64 encoded ZK proof.
+    pub proof: String,
+
+    /// The base64 encoded public inputs of the proof.
+    pub inputs: String,
+}
+
+/// A ZK proven circuit.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, MsgPacker)]
+pub struct DomainProof {
+    pub program: Proof,
+    pub domain: Proof,
+}
+
+/// A base64 encoder.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Base64;
+
+impl Base64 {
+    /// Encodes the provided bytes into base64.
+    pub fn encode<B: AsRef<[u8]>>(bytes: B) -> String {
+        STANDARD.encode(bytes.as_ref())
+    }
+
+    /// Decodes the provided base64 into bytes.
+    pub fn decode<B: AsRef<str>>(b64: B) -> anyhow::Result<Vec<u8>> {
+        STANDARD
+            .decode(b64.as_ref())
+            .map_err(|e| anyhow::anyhow!("failed to decode base64: {e}"))
+    }
+}
 
 #[async_trait]
 pub trait CoprocessorBaseClient {
     /// Returns statistics of the running instance.
     async fn stats(&self) -> anyhow::Result<Value>;
+
+    /// Co-processor historical root.
+    async fn root(&self) -> anyhow::Result<String>;
 
     /// Deploy a controller.
     ///
@@ -35,22 +70,18 @@ pub trait CoprocessorBaseClient {
     ///
     /// This is a dry-run for the prove call, that will use the same components to compute the
     /// witnesses.
-    async fn get_witnesses(
-        &self,
-        circuit: &str,
-        args: &Value,
-    ) -> anyhow::Result<WitnessCoprocessor>;
+    ///
+    /// The returned value is a representation of `WitnessCoprocessor`.
+    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Value>;
 
     /// Proves the deployed `circuit` with the given `args`.
-    async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<Proof>;
+    async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<DomainProof>;
 
     /// Get the verifying key for the provided circuit
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>>;
 
     /// Get the verifying key for the domain circuit
-    async fn get_domain_vk(&self) -> anyhow::Result<Vec<u8>> {
-        self.get_vk(Proof::DOMAIN_CIRCUIT).await
-    }
+    async fn get_domain_vk(&self) -> anyhow::Result<Vec<u8>>;
 
     /// Calls the controller entrypoint
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value>;
@@ -59,9 +90,7 @@ pub trait CoprocessorBaseClient {
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<Value>;
 
     /// Appends a block to the domain, validating it with the controller.
-    async fn add_domain_block(
-        &self,
-        domain: &str,
-        args: &Value,
-    ) -> anyhow::Result<AddedDomainBlock>;
+    ///
+    /// Returns a JSON representation of `AddedDomainBlock`
+    async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value>;
 }
