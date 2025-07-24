@@ -26,6 +26,14 @@ impl CoprocessorClient {
     pub const DEFAULT_COPROCESSOR: &str = "https://service.coprocessor.valence.zone";
 
     /// The deployed domain prover circuit id.
+    ///
+    /// This is a fixed (and temporary) domain circuit that will compute the proof that binds the
+    /// program to a given co-processor root.
+    ///
+    /// It will be replaced by the revamp of the historical co-processor tree and will split domain
+    /// trees from the main historical tree, as described in
+    ///
+    /// https://www.notion.so/Domain-proofs-2365cfa0622c802f89e8d3cbd5f750c3
     pub const DOMAIN_CIRCUIT: &str =
         "cf4d4c2f3bf4ad0114091ea8023ff2456d5572e68bbc4d4e91bfa8f4a6f5d502";
 
