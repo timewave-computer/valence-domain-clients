@@ -126,8 +126,9 @@ impl CoprocessorClient {
         args: &Value,
         root: Option<&str>,
     ) -> anyhow::Result<Proof> {
-        let retries = 25;
-        let frequency = 2000;
+        // 600000millisecs = 10min
+        let retries = 50;
+        let frequency = 12000;
 
         let uri = match root {
             Some(r) => format!("registry/controller/{circuit}/prove/{r}"),
