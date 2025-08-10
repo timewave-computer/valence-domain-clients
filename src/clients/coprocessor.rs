@@ -35,7 +35,7 @@ impl CoprocessorClient {
     ///
     /// https://www.notion.so/Domain-proofs-2365cfa0622c802f89e8d3cbd5f750c3
     pub const DOMAIN_CIRCUIT: &str =
-        "cf4d4c2f3bf4ad0114091ea8023ff2456d5572e68bbc4d4e91bfa8f4a6f5d502";
+        "1f57ddaf9492cf869f31452ec72547094478377edbd220bbb6063c745e3f8db2";
 
     pub fn new(coprocessor: String) -> Self {
         Self { coprocessor }
