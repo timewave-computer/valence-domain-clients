@@ -124,16 +124,13 @@ impl CoprocessorClient {
         &self,
         circuit: &str,
         args: &Value,
-        root: Option<&str>,
+        root: &str,
     ) -> anyhow::Result<Proof> {
         // 600000millisecs = 10min
         let retries = 50;
         let frequency = 12000;
 
-        let uri = match root {
-            Some(r) => format!("registry/controller/{circuit}/prove/{r}"),
-            None => format!("registry/controller/{circuit}/prove"),
-        };
+        let uri = format!("registry/controller/{circuit}/prove/{root}");
         let uri = self.uri(uri);
 
         let output = Uuid::new_v4();
@@ -183,10 +180,10 @@ impl CoprocessorBaseClient for CoprocessorClient {
     }
 
     async fn root(&self) -> anyhow::Result<String> {
-        let uri = self.uri("root");
+        let uri = self.uri("historical");
         let root: Value = reqwest::Client::new().get(uri).send().await?.json().await?;
 
-        root.get("historical")
+        root.get("root")
             .and_then(Value::as_str)
             .map(Into::into)
             .ok_or_else(|| anyhow::anyhow!("invalid root type"))
@@ -217,7 +214,12 @@ impl CoprocessorBaseClient for CoprocessorClient {
             .ok_or_else(|| anyhow::anyhow!("invalid response"))
     }
 
-    async fn deploy_domain(&self, domain: &str, controller: &[u8]) -> anyhow::Result<String> {
+    async fn deploy_domain(
+        &self,
+        domain: &str,
+        controller: &[u8],
+        circuit: &[u8],
+    ) -> anyhow::Result<String> {
         let uri = self.uri("registry/domain");
 
         reqwest::Client::new()
@@ -225,6 +227,7 @@ impl CoprocessorBaseClient for CoprocessorClient {
             .json(&json!({
                 "name": domain,
                 "controller": Base64::encode(controller),
+                "circuit": Base64::encode(circuit),
             }))
             .send()
             .await?
@@ -276,16 +279,23 @@ impl CoprocessorBaseClient for CoprocessorClient {
     }
 
     async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<DomainProof> {
-        let root = self.root().await?;
-        let empty = Value::default();
+        let uri = "http://prover.timewave.computer:37279/api/latest";
+        let data = reqwest::Client::new()
+            .get(uri)
+            .send()
+            .await?
+            .json::<Value>()
+            .await?;
 
-        let program = self.get_single_proof(circuit, args, Some(&root));
-        let domain = self.get_single_proof(Self::DOMAIN_CIRCUIT, &empty, Some(&root));
+        let wrapper = data
+            .get("wrapper")
+            .ok_or_else(|| anyhow::anyhow!("no wrapper proof available"))?;
 
-        let (program, domain) = tokio::join!(program, domain);
-
-        let program = program?;
-        let domain = domain?;
+        let domain: Proof = serde_json::from_value(wrapper.clone())?;
+        let inputs = Base64::decode(&domain.inputs)?;
+        let root = <[u8; 32]>::try_from(inputs.as_slice())?;
+        let root = hex::encode(root);
+        let program = self.get_single_proof(circuit, args, &root).await?;
 
         Ok(DomainProof { program, domain })
     }
@@ -370,14 +380,14 @@ async fn coprocessor_deploy_controller_works() {
 #[tokio::test]
 async fn coprocessor_deploy_domain_works() {
     CoprocessorClient::default()
-        .deploy_domain("foo", b"bar")
+        .deploy_domain("foo", b"bar", b"baz")
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn coprocessor_get_storage_file_works() {
-    let controller = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
+    let controller = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let path = "/var/share/proof.bin";
 
     CoprocessorClient::default()
@@ -388,7 +398,7 @@ async fn coprocessor_get_storage_file_works() {
 
 #[tokio::test]
 async fn coprocessor_get_witnesses_works() {
-    let circuit = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
+    let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let args = serde_json::json!({"value": 42});
 
     CoprocessorClient::default()
@@ -399,7 +409,7 @@ async fn coprocessor_get_witnesses_works() {
 
 #[tokio::test]
 async fn coprocessor_prove_works() {
-    let circuit = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
+    let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let args = serde_json::json!({"value": 42});
 
     let proof = CoprocessorClient::default()
@@ -416,14 +426,14 @@ async fn coprocessor_prove_works() {
 
 #[tokio::test]
 async fn coprocessor_get_vk_works() {
-    let circuit = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
+    let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
 
     CoprocessorClient::default().get_vk(circuit).await.unwrap();
 }
 
 #[tokio::test]
 async fn coprocessor_entrypoint_works() {
-    let controller = "5bbe392918c81c7e297375f6ef90064b61ed2b0c1849c7b568413fa7d8832918";
+    let controller = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let args = serde_json::json!({
         "payload": {
             "cmd": "store",
