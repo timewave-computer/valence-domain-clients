@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use msgpacker::MsgPacker;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// A ZK proven circuit.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, MsgPacker)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, MsgPacker)]
 pub struct Proof {
     /// The base64 encoded ZK proof.
     pub proof: String,
@@ -59,7 +60,12 @@ pub trait CoprocessorBaseClient {
     /// Deploy a domain.
     ///
     /// Returns the allocated Id.
-    async fn deploy_domain(&self, domain: &str, controller: &[u8]) -> anyhow::Result<String>;
+    async fn deploy_domain(
+        &self,
+        domain: &str,
+        controller: &[u8],
+        circuit: &[u8],
+    ) -> anyhow::Result<String>;
 
     /// Fetch a storage file, returning its contents.
     ///
