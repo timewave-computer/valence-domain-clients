@@ -47,33 +47,14 @@ impl CoprocessorClient {
         circuit: C,
         path: P,
     ) -> anyhow::Result<Option<Proof>> {
-        let uri = format!("registry/controller/{}/storage/fs", circuit.as_ref());
-        let uri = self.uri(uri);
-
-        let response = reqwest::Client::new()
-            .post(uri)
-            .json(&json!({
-                "path": path.as_ref()
-            }))
-            .send()
+        let data = match self
+            .get_storage_file(circuit.as_ref(), path.as_ref())
             .await?
-            .json::<Value>()
-            .await?;
-
-        let data = match response.get("data") {
+        {
             Some(d) => d,
-            _ => return Ok(None),
+            None => return Ok(None),
         };
 
-        let data = data
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("unexpected data format"))?;
-
-        if data.is_empty() {
-            return Ok(None);
-        }
-
-        let data = Base64::decode(data)?;
         let data: Value = serde_json::from_slice(&data)?;
 
         anyhow::ensure!(
@@ -114,7 +95,7 @@ impl CoprocessorClient {
         args: &Value,
         root: &str,
     ) -> anyhow::Result<Proof> {
-        // 600000millisecs = 10min
+        // timeout 600000millisecs = 10min
         let retries = 50;
         let frequency = 12000;
 
@@ -227,24 +208,27 @@ impl CoprocessorBaseClient for CoprocessorClient {
             .ok_or_else(|| anyhow::anyhow!("invalid response"))
     }
 
-    async fn get_storage_file(&self, controller: &str, path: &str) -> anyhow::Result<Vec<u8>> {
+    async fn get_storage_file(
+        &self,
+        controller: &str,
+        path: &str,
+    ) -> anyhow::Result<Option<Vec<u8>>> {
         let uri = format!("registry/controller/{}/storage/fs", controller);
         let uri = self.uri(uri);
 
-        reqwest::Client::new()
+        let response: Option<String> = reqwest::Client::new()
             .post(uri)
             .json(&json!({
                 "path": path,
             }))
             .send()
             .await?
-            .json::<Value>()
-            .await?
-            .get("data")
-            .and_then(Value::as_str)
-            .map(String::from)
-            .ok_or_else(|| anyhow::anyhow!("invalid response"))
-            .and_then(Base64::decode)
+            .json()
+            .await?;
+
+        let response = response.map(Base64::decode).transpose()?;
+
+        Ok(response)
     }
 
     async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Value> {
@@ -303,6 +287,10 @@ impl CoprocessorBaseClient for CoprocessorClient {
             .and_then(Value::as_str)
             .ok_or_else(|| anyhow::anyhow!("invalid vk response"))
             .and_then(Base64::decode)
+    }
+
+    async fn get_domain_vk(&self) -> anyhow::Result<String> {
+        Ok("0x009bd7e557762036be20824c6c4571b7ae70c6cd7a103915a4c5cbe32350b95a".into())
     }
 
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value> {
@@ -374,7 +362,7 @@ async fn coprocessor_get_storage_file_works() {
     let controller = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let path = "/var/share/proof.bin";
 
-    CoprocessorClient::default()
+    CoprocessorClient::local()
         .get_storage_file(controller, path)
         .await
         .unwrap();
@@ -396,7 +384,7 @@ async fn coprocessor_prove_works() {
     let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let args = serde_json::json!({"value": 42});
 
-    let proof = CoprocessorClient::default()
+    let proof = CoprocessorClient::local()
         .prove(circuit, &args)
         .await
         .unwrap();
