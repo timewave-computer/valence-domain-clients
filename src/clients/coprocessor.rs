@@ -25,18 +25,6 @@ impl CoprocessorClient {
     /// The default co-processor public address.
     pub const DEFAULT_COPROCESSOR: &str = "https://service.coprocessor.valence.zone";
 
-    /// The deployed domain prover circuit id.
-    ///
-    /// This is a fixed (and temporary) domain circuit that will compute the proof that binds the
-    /// program to a given co-processor root.
-    ///
-    /// It will be replaced by the revamp of the historical co-processor tree and will split domain
-    /// trees from the main historical tree, as described in
-    ///
-    /// https://www.notion.so/Domain-proofs-2365cfa0622c802f89e8d3cbd5f750c3
-    pub const DOMAIN_CIRCUIT: &str =
-        "1f57ddaf9492cf869f31452ec72547094478377edbd220bbb6063c745e3f8db2";
-
     pub fn new(coprocessor: String) -> Self {
         Self { coprocessor }
     }
@@ -315,10 +303,6 @@ impl CoprocessorBaseClient for CoprocessorClient {
             .and_then(Value::as_str)
             .ok_or_else(|| anyhow::anyhow!("invalid vk response"))
             .and_then(Base64::decode)
-    }
-
-    async fn get_domain_vk(&self) -> anyhow::Result<Vec<u8>> {
-        self.get_vk(Self::DOMAIN_CIRCUIT).await
     }
 
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value> {
