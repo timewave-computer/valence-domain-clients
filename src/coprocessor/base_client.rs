@@ -70,7 +70,11 @@ pub trait CoprocessorBaseClient {
     /// Fetch a storage file, returning its contents.
     ///
     /// The co-processor storage is a FAT-16 virtual filesystem, and bound to its limitations.
-    async fn get_storage_file(&self, controller: &str, path: &str) -> anyhow::Result<Vec<u8>>;
+    async fn get_storage_file(
+        &self,
+        controller: &str,
+        path: &str,
+    ) -> anyhow::Result<Option<Vec<u8>>>;
 
     /// Computes the witnesses of a controller for the provided arguments.
     ///
@@ -85,6 +89,9 @@ pub trait CoprocessorBaseClient {
 
     /// Get the verifying key for the provided circuit
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>>;
+
+    /// Get the verifying key for the domain circuit
+    async fn get_domain_vk(&self) -> anyhow::Result<String>;
 
     /// Calls the controller entrypoint
     async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value>;
