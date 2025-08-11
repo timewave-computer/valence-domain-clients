@@ -362,7 +362,7 @@ async fn coprocessor_get_storage_file_works() {
     let controller = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let path = "/var/share/proof.bin";
 
-    CoprocessorClient::local()
+    CoprocessorClient::default()
         .get_storage_file(controller, path)
         .await
         .unwrap();
@@ -384,7 +384,7 @@ async fn coprocessor_prove_works() {
     let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
     let args = serde_json::json!({"value": 42});
 
-    let proof = CoprocessorClient::local()
+    let proof = CoprocessorClient::default()
         .prove(circuit, &args)
         .await
         .unwrap();
