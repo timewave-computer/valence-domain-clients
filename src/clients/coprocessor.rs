@@ -114,13 +114,21 @@ impl CoprocessorClient {
             }
         });
 
-        reqwest::Client::new()
+        let res: Value = reqwest::Client::new()
             .post(uri)
             .json(&args)
             .send()
             .await?
-            .text()
+            .json()
             .await?;
+
+        let status = res
+            .get("status")
+            .and_then(Value::as_str)
+            .filter(|s| *s == "received")
+            .is_some();
+
+        anyhow::ensure!(status, "failed to submit proof");
 
         let duration = retries * frequency;
         let duration = Duration::from_millis(duration);
