@@ -1,10 +1,95 @@
 use async_trait::async_trait;
 use msgpacker::Unpackable as _;
+use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use tokio::time::{self, Duration};
 use uuid::Uuid;
 
-use crate::coprocessor::base_client::{Base64, CoprocessorBaseClient, DomainProof, Proof};
+use crate::coprocessor::base_client::{
+    Base64, CoprocessorBaseClient, DomainProof, Entrypoint, Proof, Witnesses,
+};
+
+#[derive(Debug, Clone)]
+pub struct RequestBuilder<'a> {
+    uri: &'a str,
+    circuit: Option<&'a str>,
+    root: Option<&'a str>,
+    args: Option<&'a Value>,
+}
+
+impl<'a> RequestBuilder<'a> {
+    pub fn new(uri: &'a str) -> Self {
+        Self {
+            uri,
+            circuit: None,
+            root: None,
+            args: None,
+        }
+    }
+
+    pub fn with_circuit(mut self, circuit: &'a str) -> Self {
+        self.circuit.replace(circuit);
+        self
+    }
+
+    pub fn with_root(mut self, root: &'a str) -> Self {
+        self.root.replace(root);
+        self
+    }
+
+    pub fn with_args(mut self, args: &'a Value) -> Self {
+        self.args.replace(args);
+        self
+    }
+
+    async fn _send<T: DeserializeOwned>(
+        self,
+        mut client: reqwest::RequestBuilder,
+    ) -> anyhow::Result<T> {
+        let Self {
+            circuit,
+            root,
+            args,
+            ..
+        } = self;
+
+        // signer settings might change at runtime
+        if let Some(signer) = valence_crypto_utils::Signer::try_from_env().ok() {
+            let message = args.unwrap_or(&Value::Null);
+            let message = serde_json::to_vec(&message)?;
+            let signature = signer.sign_json(&message)?;
+            let signature = const_hex::encode(signature);
+
+            client = client.header("valence-coprocessor-signature", signature);
+        }
+
+        if let Some(circuit) = circuit {
+            client = client.header("valence-coprocessor-circuit", circuit)
+        }
+
+        if let Some(root) = root {
+            client = client.header("valence-coprocessor-root", root)
+        }
+
+        if let Some(args) = args {
+            client = client.json(args);
+        }
+
+        Ok(client.send().await?.json().await?)
+    }
+
+    pub async fn get<T: DeserializeOwned>(self) -> anyhow::Result<T> {
+        let client = reqwest::Client::new().get(self.uri);
+
+        self._send::<T>(client).await
+    }
+
+    pub async fn post<T: DeserializeOwned>(self) -> anyhow::Result<T> {
+        let client = reqwest::Client::new().post(self.uri);
+
+        self._send::<T>(client).await
+    }
+}
 
 /// A co-processor proving client.
 ///
@@ -42,9 +127,9 @@ impl CoprocessorClient {
     }
 
     /// Fetches a proof from the queue, returning if present.
-    pub async fn get_proof_from_storage<C: AsRef<str>, P: AsRef<str>>(
+    pub async fn get_proof_from_storage<P: AsRef<str>>(
         &self,
-        circuit: C,
+        circuit: &str,
         path: P,
     ) -> anyhow::Result<Option<Proof>> {
         let data = match self
@@ -99,7 +184,7 @@ impl CoprocessorClient {
         let retries = 50;
         let frequency = 12000;
 
-        let uri = format!("registry/controller/{circuit}/prove/{root}");
+        let uri = format!("circuit/prove");
         let uri = self.uri(uri);
 
         let output = Uuid::new_v4();
@@ -114,12 +199,11 @@ impl CoprocessorClient {
             }
         });
 
-        let res: Value = reqwest::Client::new()
-            .post(uri)
-            .json(&args)
-            .send()
-            .await?
-            .json()
+        let res: Value = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .with_root(root)
+            .with_args(&args)
+            .post()
             .await?;
 
         let status = res
@@ -152,13 +236,14 @@ impl CoprocessorClient {
 impl CoprocessorBaseClient for CoprocessorClient {
     async fn stats(&self) -> anyhow::Result<Value> {
         let uri = self.uri("stats");
+        let stats = RequestBuilder::new(&uri).get().await?;
 
-        Ok(reqwest::Client::new().get(uri).send().await?.json().await?)
+        Ok(stats)
     }
 
     async fn root(&self) -> anyhow::Result<String> {
         let uri = self.uri("historical");
-        let root: Value = reqwest::Client::new().get(uri).send().await?.json().await?;
+        let root: Value = RequestBuilder::new(&uri).get().await?;
 
         root.get("root")
             .and_then(Value::as_str)
@@ -173,19 +258,16 @@ impl CoprocessorBaseClient for CoprocessorClient {
         nonce: Option<u64>,
     ) -> anyhow::Result<String> {
         let uri = self.uri("registry/controller");
-
-        reqwest::Client::new()
-            .post(uri)
-            .json(&json!({
+        let ret: Value = RequestBuilder::new(&uri)
+            .with_args(&json!({
                 "controller": Base64::encode(controller),
                 "circuit": Base64::encode(circuit),
                 "nonce": nonce,
             }))
-            .send()
-            .await?
-            .json::<Value>()
-            .await?
-            .get("controller")
+            .post()
+            .await?;
+
+        ret.get("controller")
             .and_then(Value::as_str)
             .map(String::from)
             .ok_or_else(|| anyhow::anyhow!("invalid response"))
@@ -198,40 +280,26 @@ impl CoprocessorBaseClient for CoprocessorClient {
         circuit: &[u8],
     ) -> anyhow::Result<String> {
         let uri = self.uri("registry/domain");
-
-        reqwest::Client::new()
-            .post(uri)
-            .json(&json!({
+        let ret: Value = RequestBuilder::new(&uri)
+            .with_args(&json!({
                 "name": domain,
                 "controller": Base64::encode(controller),
                 "circuit": Base64::encode(circuit),
             }))
-            .send()
-            .await?
-            .json::<Value>()
-            .await?
-            .get("domain")
+            .post()
+            .await?;
+
+        ret.get("domain")
             .and_then(Value::as_str)
             .map(String::from)
             .ok_or_else(|| anyhow::anyhow!("invalid response"))
     }
 
-    async fn get_storage_file(
-        &self,
-        controller: &str,
-        path: &str,
-    ) -> anyhow::Result<Option<Vec<u8>>> {
-        let uri = format!("registry/controller/{}/storage/fs", controller);
-        let uri = self.uri(uri);
-
-        let response: Option<String> = reqwest::Client::new()
-            .post(uri)
-            .json(&json!({
-                "path": path,
-            }))
-            .send()
-            .await?
-            .json()
+    async fn get_storage_raw(&self, circuit: &str) -> anyhow::Result<Option<Vec<u8>>> {
+        let uri = self.uri("circuit/storage/raw");
+        let response: Option<String> = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .get()
             .await?;
 
         let response = response.map(Base64::decode).transpose()?;
@@ -239,29 +307,74 @@ impl CoprocessorBaseClient for CoprocessorClient {
         Ok(response)
     }
 
-    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Value> {
-        let uri = format!("registry/controller/{}/witnesses", circuit);
-        let uri = self.uri(uri);
+    async fn set_storage_raw(&self, circuit: &str, contents: &[u8]) -> anyhow::Result<()> {
+        let uri = self.uri("circuit/storage/raw");
+        let contents = Base64::encode(contents);
 
-        let data = reqwest::Client::new()
-            .post(uri)
-            .json(&json!({
-                "args": args
-            }))
-            .send()
-            .await?
-            .json::<Value>()
+        RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .with_args(&json!(contents))
+            .post::<Value>()
             .await?;
 
-        data.get("witnesses")
-            .cloned()
-            .ok_or_else(|| anyhow::anyhow!("invalid witnesses response"))
+        Ok(())
+    }
+
+    async fn get_storage_file(&self, circuit: &str, path: &str) -> anyhow::Result<Option<Vec<u8>>> {
+        let uri = self.uri("circuit/storage/fs");
+
+        let response: Option<String> = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .with_args(&json!({
+                "path": path,
+            }))
+            .get()
+            .await?;
+
+        let response = response.map(Base64::decode).transpose()?;
+
+        Ok(response)
+    }
+
+    async fn set_storage_file(
+        &self,
+        circuit: &str,
+        path: &str,
+        contents: &[u8],
+    ) -> anyhow::Result<()> {
+        let uri = self.uri("circuit/storage/fs");
+        let contents = Base64::encode(contents);
+
+        RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .with_args(&json!({
+                "path": path,
+                "contents": contents,
+            }))
+            .post::<Value>()
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Witnesses> {
+        let uri = self.uri("circuit/witnesses");
+        let witnesses = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .with_args(&json!({
+                "args": args
+            }))
+            .post()
+            .await?;
+
+        Ok(witnesses)
     }
 
     async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<DomainProof> {
         let uri = "http://prover.timewave.computer:37279/api/latest";
         let data = reqwest::Client::new()
             .get(uri)
+            .header("valence-coprocessor-circuit", circuit)
             .send()
             .await?
             .json::<Value>()
@@ -281,61 +394,64 @@ impl CoprocessorBaseClient for CoprocessorClient {
     }
 
     async fn get_vk(&self, circuit: &str) -> anyhow::Result<Vec<u8>> {
-        let uri = format!("registry/controller/{}/vk", circuit);
-        let uri = self.uri(uri);
-
-        let data = reqwest::Client::new()
-            .get(uri)
-            .send()
-            .await?
-            .json::<Value>()
+        let uri = self.uri("circuit/vk");
+        let data: String = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .get()
             .await?;
 
-        data.get("base64")
-            .and_then(Value::as_str)
-            .ok_or_else(|| anyhow::anyhow!("invalid vk response"))
-            .and_then(Base64::decode)
+        Base64::decode(data)
     }
 
     async fn get_domain_vk(&self) -> anyhow::Result<String> {
         Ok("0x009bd7e557762036be20824c6c4571b7ae70c6cd7a103915a4c5cbe32350b95a".into())
     }
 
-    async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value> {
-        let uri = format!("registry/controller/{}/entrypoint", controller);
-        let uri = self.uri(uri);
-
-        let data = reqwest::Client::new()
-            .post(uri)
-            .json(args)
-            .send()
-            .await?
-            .json::<Value>()
+    async fn get_circuit(&self, circuit: &str) -> anyhow::Result<Vec<u8>> {
+        let uri = self.uri("circuit/bytecode");
+        let data: String = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .get()
             .await?;
 
-        data.get("ret")
-            .cloned()
-            .ok_or_else(|| anyhow::anyhow!("no response provided"))
+        Base64::decode(data)
+    }
+
+    async fn get_runtime(&self, circuit: &str) -> anyhow::Result<Vec<u8>> {
+        let uri = self.uri("circuit/runtime");
+        let data: String = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .get()
+            .await?;
+
+        Base64::decode(data)
+    }
+
+    async fn entrypoint(&self, circuit: &str, args: &Value) -> anyhow::Result<Entrypoint> {
+        let uri = self.uri("circuit/entrypoint");
+        let data = RequestBuilder::new(&uri)
+            .with_circuit(circuit)
+            .with_args(args)
+            .post()
+            .await?;
+
+        Ok(data)
     }
 
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<Value> {
         let uri = format!("registry/domain/{}/latest", domain);
         let uri = self.uri(uri);
+        let data = RequestBuilder::new(&uri).get().await?;
 
-        Ok(reqwest::Client::new().get(uri).send().await?.json().await?)
+        Ok(data)
     }
 
     async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value> {
         let uri = format!("registry/domain/{}", domain);
         let uri = self.uri(uri);
+        let data = RequestBuilder::new(&uri).with_args(args).post().await?;
 
-        Ok(reqwest::Client::new()
-            .post(uri)
-            .json(&args)
-            .send()
-            .await?
-            .json()
-            .await?)
+        Ok(data)
     }
 }
 
@@ -366,30 +482,72 @@ async fn coprocessor_deploy_domain_works() {
 }
 
 #[tokio::test]
-async fn coprocessor_get_storage_file_works() {
-    let controller = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
-    let path = "/var/share/proof.bin";
+async fn coprocessor_storage_raw_works() {
+    let circuit = blake3::hash(b"coprocessor_storage_raw_works")
+        .to_hex()
+        .to_string();
+
+    let data = b"foo";
 
     CoprocessorClient::default()
-        .get_storage_file(controller, path)
+        .set_storage_raw(&circuit, data)
         .await
         .unwrap();
+
+    let storage = CoprocessorClient::default()
+        .get_storage_raw(&circuit)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(&data[..], storage.as_slice());
+}
+
+#[tokio::test]
+async fn coprocessor_storage_file_works() {
+    let circuit = blake3::hash(b"coprocessor_storage_file_works")
+        .to_hex()
+        .to_string();
+
+    let path = "/var/share/data.txt";
+    let data = b"foo";
+
+    CoprocessorClient::default()
+        .set_storage_file(&circuit, path, data)
+        .await
+        .unwrap();
+
+    let contents = CoprocessorClient::default()
+        .get_storage_file(&circuit, path)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(&data[..], contents.as_slice());
 }
 
 #[tokio::test]
 async fn coprocessor_get_witnesses_works() {
-    let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
-    let args = serde_json::json!({"value": 42});
+    let circuit = "a5be3bdb449527c80dd493ad5566f6d3f95f84c00c7c38f4189d3c3c5b53f16d";
 
-    CoprocessorClient::default()
+    let value = 42u64;
+    let args = serde_json::json!({"value": value});
+
+    let ret = CoprocessorClient::default()
         .get_witnesses(circuit, &args)
         .await
         .unwrap();
+
+    let data = ret.witnesses["witnesses"].as_array().unwrap()[0]["Data"].clone();
+    let data: Vec<u8> = serde_json::from_value(data).unwrap();
+    let data = u64::from_le_bytes(data.as_slice().try_into().unwrap());
+
+    assert_eq!(data, value);
 }
 
 #[tokio::test]
 async fn coprocessor_prove_works() {
-    let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
+    let circuit = "a5be3bdb449527c80dd493ad5566f6d3f95f84c00c7c38f4189d3c3c5b53f16d";
     let args = serde_json::json!({"value": 42});
 
     let proof = CoprocessorClient::default()
@@ -406,14 +564,34 @@ async fn coprocessor_prove_works() {
 
 #[tokio::test]
 async fn coprocessor_get_vk_works() {
-    let circuit = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
+    let circuit = "a5be3bdb449527c80dd493ad5566f6d3f95f84c00c7c38f4189d3c3c5b53f16d";
 
     CoprocessorClient::default().get_vk(circuit).await.unwrap();
 }
 
 #[tokio::test]
+async fn coprocessor_get_circuit_works() {
+    let circuit = "a5be3bdb449527c80dd493ad5566f6d3f95f84c00c7c38f4189d3c3c5b53f16d";
+
+    CoprocessorClient::default()
+        .get_circuit(circuit)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn coprocessor_get_runtime_works() {
+    let circuit = "a5be3bdb449527c80dd493ad5566f6d3f95f84c00c7c38f4189d3c3c5b53f16d";
+
+    CoprocessorClient::default()
+        .get_runtime(circuit)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn coprocessor_entrypoint_works() {
-    let controller = "1c449e308ab05102e06969bc2f81162b5bfc824269011ac7ad45844a2dabc9c3";
+    let circuit = "a5be3bdb449527c80dd493ad5566f6d3f95f84c00c7c38f4189d3c3c5b53f16d";
     let args = serde_json::json!({
         "payload": {
             "cmd": "store",
@@ -422,7 +600,7 @@ async fn coprocessor_entrypoint_works() {
     });
 
     CoprocessorClient::default()
-        .entrypoint(controller, &args)
+        .entrypoint(circuit, &args)
         .await
         .unwrap();
 }
