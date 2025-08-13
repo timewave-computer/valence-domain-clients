@@ -14,6 +14,26 @@ pub struct Proof {
     pub inputs: String,
 }
 
+/// A runtime computed witnesses
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Witnesses {
+    /// Computed witnesses.
+    pub witnesses: Value,
+
+    /// Runtime logs.
+    pub log: Vec<String>,
+}
+
+/// The returned value of an entrypoint call.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Entrypoint {
+    /// Result of the computation.
+    pub ret: Value,
+
+    /// Runtime logs.
+    pub log: Vec<String>,
+}
+
 /// A ZK proven circuit.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, MsgPacker)]
 pub struct DomainProof {
@@ -52,7 +72,7 @@ pub trait CoprocessorBaseClient {
     /// Returns the allocated Id.
     async fn deploy_controller(
         &self,
-        controller: &[u8],
+        circuit: &[u8],
         circuit: &[u8],
         nonce: Option<u64>,
     ) -> anyhow::Result<String>;
@@ -63,26 +83,33 @@ pub trait CoprocessorBaseClient {
     async fn deploy_domain(
         &self,
         domain: &str,
-        controller: &[u8],
+        circuit: &[u8],
         circuit: &[u8],
     ) -> anyhow::Result<String>;
+
+    /// Fetch the raw storage.
+    async fn get_storage_raw(&self, circuit: &str) -> anyhow::Result<Option<Vec<u8>>>;
+
+    /// Replaces the storage contents with the provided bytes
+    async fn set_storage_raw(&self, circuit: &str, contents: &[u8]) -> anyhow::Result<()>;
 
     /// Fetch a storage file, returning its contents.
     ///
     /// The co-processor storage is a FAT-16 virtual filesystem, and bound to its limitations.
-    async fn get_storage_file(
+    async fn get_storage_file(&self, circuit: &str, path: &str) -> anyhow::Result<Option<Vec<u8>>>;
+
+    /// Replaces the storage file path with the provided contents.
+    ///
+    /// Note: This is a FAT-16 filesystem, so extensions must have max 3 characters.
+    async fn set_storage_file(
         &self,
-        controller: &str,
+        circuit: &str,
         path: &str,
-    ) -> anyhow::Result<Option<Vec<u8>>>;
+        contents: &[u8],
+    ) -> anyhow::Result<()>;
 
     /// Computes the witnesses of a controller for the provided arguments.
-    ///
-    /// This is a dry-run for the prove call, that will use the same components to compute the
-    /// witnesses.
-    ///
-    /// The returned value is a representation of `WitnessCoprocessor`.
-    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Value>;
+    async fn get_witnesses(&self, circuit: &str, args: &Value) -> anyhow::Result<Witnesses>;
 
     /// Proves the deployed `circuit` with the given `args`.
     async fn prove(&self, circuit: &str, args: &Value) -> anyhow::Result<DomainProof>;
@@ -93,8 +120,14 @@ pub trait CoprocessorBaseClient {
     /// Get the verifying key for the domain circuit
     async fn get_domain_vk(&self) -> anyhow::Result<String>;
 
+    /// Get the circuit bytecode
+    async fn get_circuit(&self, circuit: &str) -> anyhow::Result<Vec<u8>>;
+
+    /// Get the circuit runtime bytecode
+    async fn get_runtime(&self, circuit: &str) -> anyhow::Result<Vec<u8>>;
+
     /// Calls the controller entrypoint
-    async fn entrypoint(&self, controller: &str, args: &Value) -> anyhow::Result<Value>;
+    async fn entrypoint(&self, circuit: &str, args: &Value) -> anyhow::Result<Entrypoint>;
 
     /// Returns the latest validated domain block.
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<Value>;
