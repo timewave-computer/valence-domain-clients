@@ -1,5 +1,6 @@
 #[cfg(feature = "cosmos")]
 pub mod babylon;
+#[cfg(feature = "coprocessor")]
 pub mod coprocessor;
 #[cfg(feature = "evm")]
 pub mod ethereum;
@@ -15,6 +16,9 @@ pub mod neutron;
 pub mod noble;
 #[cfg(feature = "cosmos")]
 pub mod osmosis;
-#[cfg(feature = "solana")]
-pub mod solana;
+#[cfg(feature = "indexer")]
 pub mod valence_indexer;
+
+// TODO fix
+//#[cfg(feature = "solana")]
+//pub mod solana;
