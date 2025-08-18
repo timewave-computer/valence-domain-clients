@@ -54,7 +54,7 @@ impl<'a> RequestBuilder<'a> {
         } = self;
 
         // signer settings might change at runtime
-        if let Some(signer) = valence_crypto_utils::Signer::try_from_env().ok() {
+        if let Ok(signer) = valence_crypto_utils::Signer::try_from_env() {
             let message = args.unwrap_or(&Value::Null);
             let message = serde_json::to_vec(&message)?;
             let signature = signer.sign_json(&message)?;
@@ -184,12 +184,11 @@ impl CoprocessorClient {
         let retries = 50;
         let frequency = 12000;
 
-        let uri = format!("circuit/prove");
-        let uri = self.uri(uri);
+        let uri = self.uri("circuit/prove");
 
         let output = Uuid::new_v4();
         let output = output.as_u128().to_le_bytes();
-        let output = hex::encode(output);
+        let output = const_hex::encode(output);
         let path = format!("/var/share/proofs/{}.bin", &output[..8]);
         let args = json!({
             "args": args,
@@ -387,7 +386,7 @@ impl CoprocessorBaseClient for CoprocessorClient {
         let domain: Proof = serde_json::from_value(wrapper.clone())?;
         let inputs = Base64::decode(&domain.inputs)?;
         let root = <[u8; 32]>::try_from(inputs.as_slice())?;
-        let root = hex::encode(root);
+        let root = const_hex::encode(root);
         let program = self.get_single_proof(circuit, args, &root).await?;
 
         Ok(DomainProof { program, domain })
@@ -560,6 +559,17 @@ async fn coprocessor_prove_works() {
 
     assert_eq!(&program[32..], &43u64.to_le_bytes());
     assert_eq!(&program[..32], &domain);
+}
+
+#[tokio::test]
+async fn coprocessor_prove_vault_works() {
+    let circuit = "c979bf2a0d9057ecdc8bde11f8cfa98aca9f9e9b1bda6d7ae8443512bd138ce8";
+    let args = serde_json::json!({"withdraw_request_id": 4});
+
+    CoprocessorClient::default()
+        .prove(circuit, &args)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

@@ -1,3 +1,4 @@
+#[cfg(feature = "cosmos")]
 use cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 
 #[derive(Debug)]
@@ -8,6 +9,7 @@ pub struct TransactionResponse {
     pub gas_used: u64,
 }
 
+#[cfg(feature = "cosmos")]
 impl TryFrom<TxResponse> for TransactionResponse {
     type Error = anyhow::Error;
 
@@ -21,6 +23,7 @@ impl TryFrom<TxResponse> for TransactionResponse {
     }
 }
 
+#[cfg(feature = "cosmos")]
 impl TryFrom<Option<TxResponse>> for TransactionResponse {
     type Error = anyhow::Error;
 

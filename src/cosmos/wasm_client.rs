@@ -94,7 +94,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         &self,
         code_id: u64,
         label: String,
-        msg: (impl Serialize + Send),
+        msg: impl Serialize + Send,
         admin: Option<String>,
     ) -> anyhow::Result<String> {
         let signing_client = self.get_signing_client().await?;
@@ -206,7 +206,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
         &self,
         code_id: u64,
         label: String,
-        msg: (impl Serialize + Send),
+        msg: impl Serialize + Send,
         admin: Option<String>,
         salt: String,
     ) -> anyhow::Result<String> {
@@ -276,7 +276,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
     async fn query_contract_state<T: DeserializeOwned>(
         &self,
         contract_address: &str,
-        query_data: (impl Serialize + Send),
+        query_data: impl Serialize + Send,
     ) -> anyhow::Result<T> {
         let channel = self.get_grpc_channel().await?;
 
@@ -302,7 +302,7 @@ pub trait WasmClient: GrpcSigningClient + BaseClient {
     async fn execute_wasm(
         &self,
         contract: &str,
-        msg: (impl Serialize + Send),
+        msg: impl Serialize + Send,
         funds: Vec<Coin>,
         fees: Option<Fee>,
     ) -> anyhow::Result<TransactionResponse> {

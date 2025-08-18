@@ -1,69 +1,112 @@
 [package]
-name        = "valence-domain-clients"
-authors    = ["Timewave Labs"]
-edition    = "2021"
-license    = "Apache-2.0"
-version    = "1.1.0"
+name = "valence-domain-clients"
+authors = ["Timewave Labs"]
+edition = "2021"
+license = "Apache-2.0"
+version = "1.1.0"
 repository = "https://github.com/timewave-computer/valence-domain-clients"
 description = "Client implementations for interacting with Valence Protocol domains"
 
 [features]
-default = ["cosmos", "evm"]
+default = ["coprocessor", "cosmos", "evm", "indexer"]
+coprocessor = [
+  "base64",
+  "const-hex",
+  "msgpacker",
+  "uuid",
+  "valence-crypto-utils",
+]
+cosmos = [
+  "alloy",
+  "bip32",
+  "cosmos-sdk-proto",
+  "cosmrs",
+  "ed25519-zebra",
+  "hex",
+  "ibc",
+  "log",
+  "neutron-std",
+  "prost",
+  "tonic",
+]
+evm = ["alloy", "alloy_signer_local", "log", "tonic"]
+indexer = ["alloy", "tonic"]
+solana = [
+  "bip32",
+  "bs58",
+  "ed25519-dalek",
+  "log",
+  "solana-client",
+  "solana-account-decoder",
+  "solana-rpc-client",
+  "solana-rpc-client-api",
+  "solana-sdk",
+  "solana-transaction-status",
+]
 test-utils = []
-cosmos = ["cosmrs", "cosmos-sdk-proto", "tonic", "neutron-std", "ibc"]
-evm = ["alloy", "alloy_signer_local", "alloy_primitives_encoder", "alloy_sol_types_encoder"]
-solana = ["solana-client", "solana-sdk", "solana-rpc-client", "solana-rpc-client-api", "solana-account-decoder", "solana-transaction-status", "ed25519-dalek"]
 
 [dependencies]
 # generic imports
-anyhow      = "1.0.83"
-tokio       = "1.43.0"
+anyhow = "1.0.83"
 async-trait = "0.1.77"
-serde              = { version = "1.0.207", default-features = false, features = ["derive"] }
-serde_json         = "1.0.125"
-prost              = { version = "0.13.3", default-features = false }
-log                = "0.4.22"
-thiserror          = "1.0.63"
+tokio = { version = "1.43.0", features = ["full"] }
+reqwest = { version = "0.12.15", features = ["json"] }
+serde = { version = "1.0.207", features = ["derive"] }
+serde_json = "1.0.125"
+
+# fixes
+# TODO cosmwasm broken deps; remove when fixed
+ed25519-zebra = { version = "=4.0.3", default-features = false, optional = true }
 
 # cosmos-specific imports
-bip32                   = { version = "0.5", features = ["bip39"] }
-cosmrs                  = { version = "0.21.1", features = ["cosmwasm", "rpc", "grpc"], optional = true }
-cosmos-sdk-proto        = { version = "0.26.1", features = ["grpc-transport", "grpc"], optional = true }
-tonic                   = { version = "0.12.3", features = ["transport", "tls", "tls-native-roots"], optional = true }
-hex                     = "0.4.3"
-neutron-std             = { version = "5.1.2", optional = true }
-ibc                     = { version = "0.57.0", optional = true }
+bip32 = { version = "0.5", features = ["bip39"], optional = true }
+cosmrs = { version = "0.21.1", features = [
+  "cosmwasm",
+  "rpc",
+  "grpc",
+], optional = true }
+cosmos-sdk-proto = { version = "0.26.1", features = [
+  "grpc-transport",
+  "grpc",
+], optional = true }
+log = { version = "0.4.22", optional = true }
+tonic = { version = "0.12.3", features = [
+  "transport",
+  "tls",
+  "tls-native-roots",
+], optional = true }
+neutron-std = { version = "5.1.2", optional = true }
+ibc = { version = "0.57.0", optional = true }
+prost = { version = "0.13.3", default-features = false, optional = true }
+hex = { version = "0.4.3", optional = true }
 
 # coprocessor-specific imports
-base64 = "0.22.1"
+base64 = { version = "0.22.1", optional = true }
 const-hex = { version = "1.14.1", default-features = false, features = [
   "alloc",
   "core-error",
-] }
-msgpacker = "0.4.8"
-reqwest = { version = "0.12.15", features = ["json"] }
-uuid = { version = "1.17.0", features = ["v4"] }
-valence-crypto-utils = "0.1.0"
+], optional = true }
+msgpacker = { version = "0.4.8", optional = true }
+uuid = { version = "1.17.0", features = ["v4"], optional = true }
+valence-crypto-utils = { version = "0.1.0", optional = true }
 
 # evm-specific imports
 alloy_signer_local = { package = "alloy-signer-local", version = "0.9.2", features = [
-    "mnemonic",
-    "keystore",
+  "mnemonic",
+  "keystore",
 ], optional = true }
-alloy_primitives_encoder = { package = "alloy-primitives", version = "0.7.7", optional = true }
-alloy_sol_types_encoder = { package = "alloy-sol-types", version = "0.7.7", optional = true }
 alloy = { version = "0.9.2", features = [
-    "eips",
-    "full",
-    "hyper",
-    "json-rpc",
-    "node-bindings",
-    "rpc-client",
-    "rpc-types-debug",
-    "rpc-types-trace",
-    "signer-keystore",
-    "signer-mnemonic",
-    "signers",
+  "eips",
+  "full",
+  "hyper",
+  "json-rpc",
+  "node-bindings",
+  "rpc-client",
+  "rpc-types-debug",
+  "rpc-types-trace",
+  "signer-keystore",
+  "signer-mnemonic",
+  "signers",
 ], optional = true }
 
 # solana-specific imports
@@ -73,7 +116,7 @@ solana-rpc-client = { version = "2.0", optional = true }
 solana-rpc-client-api = { version = "2.0", optional = true }
 solana-account-decoder = { version = "2.0", optional = true }
 solana-transaction-status = { version = "2.0", optional = true }
-bs58 = "0.5.1"
+bs58 = { version = "0.5.1", optional = true }
 ed25519-dalek = { version = "2.0.0", optional = true }
 
 [dev-dependencies]
