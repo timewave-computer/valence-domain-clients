@@ -35,7 +35,7 @@ pub struct Entrypoint {
 }
 
 /// A ZK proven circuit.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, MsgPacker)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, MsgPacker)]
 pub struct DomainProof {
     pub program: Proof,
     pub domain: Proof,
