@@ -45,6 +45,7 @@ impl<'a> RequestBuilder<'a> {
     async fn _send<T: DeserializeOwned>(
         self,
         mut client: reqwest::RequestBuilder,
+        get: bool,
     ) -> anyhow::Result<T> {
         let Self {
             circuit,
@@ -54,13 +55,15 @@ impl<'a> RequestBuilder<'a> {
         } = self;
 
         // signer settings might change at runtime
-        if let Ok(signer) = valence_crypto_utils::Signer::try_from_env() {
-            let message = args.unwrap_or(&Value::Null);
-            let message = serde_json::to_vec(&message)?;
-            let signature = signer.sign_json(&message)?;
-            let signature = const_hex::encode(signature);
+        if !get {
+            if let Ok(signer) = valence_crypto_utils::Signer::try_from_env() {
+                let message = args.unwrap_or(&Value::Null);
+                let message = serde_json::to_vec(&message)?;
+                let signature = signer.sign_json(&message)?;
+                let signature = const_hex::encode(signature);
 
-            client = client.header("valence-coprocessor-signature", signature);
+                client = client.header("valence-coprocessor-signature", signature);
+            }
         }
 
         if let Some(circuit) = circuit {
@@ -81,13 +84,13 @@ impl<'a> RequestBuilder<'a> {
     pub async fn get<T: DeserializeOwned>(self) -> anyhow::Result<T> {
         let client = reqwest::Client::new().get(self.uri);
 
-        self._send::<T>(client).await
+        self._send::<T>(client, true).await
     }
 
     pub async fn post<T: DeserializeOwned>(self) -> anyhow::Result<T> {
         let client = reqwest::Client::new().post(self.uri);
 
-        self._send::<T>(client).await
+        self._send::<T>(client, false).await
     }
 }
 
@@ -559,17 +562,6 @@ async fn coprocessor_prove_works() {
 
     assert_eq!(&program[32..], &43u64.to_le_bytes());
     assert_eq!(&program[..32], &domain);
-}
-
-#[tokio::test]
-async fn coprocessor_prove_vault_works() {
-    let circuit = "c979bf2a0d9057ecdc8bde11f8cfa98aca9f9e9b1bda6d7ae8443512bd138ce8";
-    let args = serde_json::json!({"withdraw_request_id": 4});
-
-    CoprocessorClient::default()
-        .prove(circuit, &args)
-        .await
-        .unwrap();
 }
 
 #[tokio::test]

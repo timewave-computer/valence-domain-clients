@@ -8,14 +8,16 @@ repository = "https://github.com/timewave-computer/valence-domain-clients"
 description = "Client implementations for interacting with Valence Protocol domains"
 
 [features]
-default = ["coprocessor", "cosmos", "evm", "indexer"]
+default = ["coprocessor", "coprocessor-bin", "cosmos", "evm", "indexer"]
 coprocessor = [
   "base64",
   "const-hex",
   "msgpacker",
+  "toml",
   "uuid",
   "valence-crypto-utils",
 ]
+coprocessor-bin = ["clap", "colored", "coprocessor"]
 cosmos = [
   "alloy",
   "bip32",
@@ -87,8 +89,13 @@ const-hex = { version = "1.14.1", default-features = false, features = [
   "core-error",
 ], optional = true }
 msgpacker = { version = "0.4.8", optional = true }
+toml = { version = "0.9.5", optional = true }
 uuid = { version = "1.17.0", features = ["v4"], optional = true }
-valence-crypto-utils = { version = "0.1.0", optional = true }
+valence-crypto-utils = { version = "0.1.1", optional = true }
+
+# coprocessor-bin specific imports
+clap = { version = "4.5.37", optional = true, features = ["derive", "env"] }
+colored = { version = "3.0.0", optional = true }
 
 # evm-specific imports
 alloy_signer_local = { package = "alloy-signer-local", version = "0.9.2", features = [
@@ -122,3 +129,8 @@ ed25519-dalek = { version = "2.0.0", optional = true }
 [dev-dependencies]
 # valence-e2e = { git = "https://github.com/timewave-computer/valence-protocol" }
 blake3 = "1.8.2"
+
+[[bin]]
+name = "valence-coprocessor"
+path = "src/bin/coprocessor/main.rs"
+required-features = ["coprocessor-bin"]
