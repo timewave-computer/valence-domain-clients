@@ -64,7 +64,7 @@ impl NobleClient {
             .configure_minter_controller(sender, sender, &cctp_module_account_address)
             .await
             .unwrap();
-        info!("Minter controller configured response: {:?}", tx_response);
+        info!("Minter controller configured response: {tx_response:?}");
         self.poll_for_tx(&tx_response.hash).await.unwrap();
 
         // Configure the module account as a minter with a large mint allowance
@@ -72,7 +72,7 @@ impl NobleClient {
             .configure_minter(sender, &cctp_module_account_address, ALLOWANCE, denom)
             .await
             .unwrap();
-        info!("Minter configured response: {:?}", tx_response);
+        info!("Minter configured response: {tx_response:?}");
         self.poll_for_tx(&tx_response.hash).await.unwrap();
 
         // Add a remote token messenger address for the given domain_id.
@@ -84,7 +84,7 @@ impl NobleClient {
         match tx_response {
             Ok(response) => {
                 self.poll_for_tx(&response.hash).await.unwrap();
-                info!("Remote token messenger added response: {:?}", response);
+                info!("Remote token messenger added response: {response:?}");
             }
             Err(_) => {
                 info!("Remote token messenger already added!");
@@ -99,7 +99,7 @@ impl NobleClient {
         match tx_response {
             Ok(response) => {
                 self.poll_for_tx(&response.hash).await.unwrap();
-                info!("Token pair linked response: {:?}", response);
+                info!("Token pair linked response: {response:?}");
             }
             Err(_) => {
                 info!("Token pair already linked!");
