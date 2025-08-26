@@ -169,7 +169,7 @@ pub trait EvmBaseClient: RequestProviderClient {
                     log::info!("query attempt {attempt}/{max_attempts}: condition not met");
                 }
                 Err(e) => {
-                    log::warn!("query attempt {attempt}/{max_attempts} failed: {:?}", e);
+                    log::warn!("query attempt {attempt}/{max_attempts} failed: {e:?}");
                 }
             }
         }

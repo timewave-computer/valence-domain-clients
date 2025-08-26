@@ -441,7 +441,7 @@ impl CoprocessorBaseClient for CoprocessorClient {
     }
 
     async fn get_latest_domain_block(&self, domain: &str) -> anyhow::Result<Value> {
-        let uri = format!("registry/domain/{}/latest", domain);
+        let uri = format!("registry/domain/{domain}/latest");
         let uri = self.uri(uri);
         let data = RequestBuilder::new(&uri).get().await?;
 
@@ -449,7 +449,7 @@ impl CoprocessorBaseClient for CoprocessorClient {
     }
 
     async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value> {
-        let uri = format!("registry/domain/{}", domain);
+        let uri = format!("registry/domain/{domain}");
         let uri = self.uri(uri);
         let data = RequestBuilder::new(&uri).with_args(args).post().await?;
 

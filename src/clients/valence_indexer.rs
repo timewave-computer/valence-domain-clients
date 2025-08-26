@@ -142,5 +142,5 @@ async fn indexer_works() {
         .await
         .unwrap();
 
-    println!("resp: {:?}", resp);
+    println!("resp: {resp:?}");
 }

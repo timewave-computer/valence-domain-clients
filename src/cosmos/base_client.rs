@@ -192,9 +192,16 @@ pub trait BaseClient: GrpcSigningClient {
             let rx = grpc_client.get_tx(request.clone()).await;
             match rx {
                 Ok(response) => {
-                    let r = response.into_inner();
-                    if let Some(tx_response) = r.tx_response {
-                        return Ok(tx_response);
+                    if let Some(tx_response) = response.into_inner().tx_response {
+                        // ensure the tx actually succeeded
+                        if tx_response.code == 0 {
+                            return Ok(tx_response);
+                        } else {
+                            return Err(anyhow::anyhow!(
+                                "tx {tx_hash} confirmation failed with response code: {}",
+                                tx_response.code
+                            ));
+                        }
                     }
                 }
                 Err(tonic_status) => match tonic_status.code() {
@@ -208,7 +215,7 @@ pub trait BaseClient: GrpcSigningClient {
             };
         }
 
-        Err(anyhow::anyhow!("failed to confirm tx"))
+        Err(anyhow::anyhow!("failed to confirm tx with hash: {tx_hash}"))
     }
 
     async fn query_tx_hash(&self, tx_hash: &str) -> anyhow::Result<TxResponse> {
@@ -253,10 +260,7 @@ pub trait BaseClient: GrpcSigningClient {
                     );
                 }
                 Err(e) => {
-                    warn!(
-                        "Balance polling attempt {attempt}/{max_attempts} failed: {:?}",
-                        e
-                    );
+                    warn!("Balance polling attempt {attempt}/{max_attempts} failed: {e:?}");
                 }
             }
         }
