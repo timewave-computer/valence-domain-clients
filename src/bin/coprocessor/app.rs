@@ -20,7 +20,7 @@ pub async fn deploy(
     manifest: &str,
     name: &str,
 ) -> anyhow::Result<Value> {
-    let (dir, manifest) = load_manifest(manifest)?;
+    let (dir, manifest) = Manifest::load_from_path(manifest)?;
 
     fn _load(manifest: &Manifest, dir: &Path, name: &str) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
         let artifacts = dir
@@ -55,7 +55,7 @@ pub async fn download(
     id: &str,
 ) -> anyhow::Result<Value> {
     let (dir, manifest) = match path {
-        Some(m) => load_manifest(m)?,
+        Some(m) => Manifest::load_from_path(m)?,
         None => {
             info!("No manifest provided; searching on current structure...");
 
@@ -81,7 +81,7 @@ pub async fn download(
                 fs::write(&manifest, contents)?;
             }
 
-            load_manifest(&manifest.display().to_string())?
+            Manifest::load_from_path(&manifest.display().to_string())?
         }
     };
 
@@ -183,20 +183,4 @@ pub async fn witnesses(
     let witnesses = client.get_witnesses(circuit, &args).await?;
 
     Ok(serde_json::to_value(witnesses)?)
-}
-
-/// Load the manifest from path, returning its parsed structure and parent dir.
-fn load_manifest(manifest: &str) -> anyhow::Result<(PathBuf, Manifest)> {
-    let path = PathBuf::from(manifest).canonicalize()?;
-    let dir = path
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("failed to navigate to manifest directory"))?
-        .to_path_buf();
-
-    let manifest = fs::read_to_string(&path)?;
-    let manifest = toml::from_str(&manifest)?;
-
-    info!("Loaded manifest file from `{}`...", path.display());
-
-    Ok((dir, manifest))
 }

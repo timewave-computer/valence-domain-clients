@@ -1,9 +1,10 @@
 use std::{
     collections::HashMap,
-    fmt,
+    fmt, fs,
     path::{Path, PathBuf},
 };
 
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,6 +88,35 @@ impl Manifest {
             },
         );
         self
+    }
+}
+
+impl TryFrom<&Path> for Manifest {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Path) -> anyhow::Result<Self> {
+        let manifest = fs::read_to_string(value)?;
+        let manifest = toml::from_str(&manifest)?;
+
+        Ok(manifest)
+    }
+}
+
+impl Manifest {
+    /// Load the manifest from path, returning its parent dir and parsed structure.
+    pub fn load_from_path(manifest: &str) -> anyhow::Result<(PathBuf, Self)> {
+        let path = PathBuf::from(manifest).canonicalize()?;
+
+        let parent_dir = path
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("failed to navigate to manifest parent directory"))?
+            .to_path_buf();
+
+        let manifest = Manifest::try_from(path.as_path())?;
+
+        info!("Loaded manifest file from `{}`...", path.display());
+
+        Ok((parent_dir, manifest))
     }
 }
 
