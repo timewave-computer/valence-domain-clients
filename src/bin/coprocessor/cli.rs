@@ -14,21 +14,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Builds a circuit.
-    Build {
-        /// Path to the valence manifest file.
-        #[arg(short, long, value_name = "MANIFEST", default_value = "valence.toml")]
-        manifest: String,
-
-        /// Circuit name. If absent, will compile all circuits.
-        #[arg(short, long, value_name = "NAME")]
-        name: Option<String>,
-
-        /// Build only controller?
-        #[arg(short, long, value_name = "ONLY_CONTROLLER")]
-        only_controller: bool,
-    },
-
     /// Deploys a circuit.
     Deploy {
         /// Path to the valence manifest file.

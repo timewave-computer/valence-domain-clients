@@ -21,18 +21,6 @@ async fn main() -> anyhow::Result<()> {
     use Commands as C;
 
     let ret = match cmd {
-        C::Build {
-            manifest,
-            name: Some(name),
-            only_controller,
-        } => app::build(&manifest, &name, only_controller)?,
-
-        C::Build {
-            manifest,
-            name: None,
-            only_controller,
-        } => app::build_all(&manifest, only_controller)?,
-
         C::Deploy {
             manifest,
             name: Some(name),
