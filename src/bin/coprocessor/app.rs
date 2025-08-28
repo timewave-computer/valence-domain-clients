@@ -15,136 +15,12 @@ use valence_domain_clients::{
 
 use crate::{error, info};
 
-pub fn build(manifest: &str, name: &str, only_controller: bool) -> anyhow::Result<Value> {
-    let (dir, manifest) = load_manifest(manifest)?;
-    let artifacts = dir.join(manifest.valence.artifacts).join(name);
-
-    fs::create_dir_all(&artifacts)?;
-
-    let artifacts = artifacts.canonicalize()?;
-    let out_cir = artifacts.join("circuit.bin");
-    let out_con = artifacts.join("controller.bin");
-
-    info!("Storing artifacts at `{}`...", artifacts.display());
-
-    let circuit = manifest
-        .circuit
-        .get(name)
-        .ok_or_else(|| anyhow::anyhow!("failed to load circuit `{name}`"))?;
-
-    info!("Loaded entry `{}`...", name);
-
-    let output = Command::new("cargo")
-        .current_dir(&dir)
-        .args(["metadata", "--format-version", "1"])
-        .stderr(Stdio::inherit())
-        .output()?;
-
-    let metadata: Value = serde_json::from_slice(&output.stdout)?;
-    let target = metadata
-        .get("target_directory")
-        .and_then(Value::as_str)
-        .map(PathBuf::from)
-        .ok_or_else(|| anyhow::anyhow!("failed to compute target directory"))?;
-
-    let controller = circuit
-        .controller
-        .as_ref()
-        .ok_or_else(|| anyhow::anyhow!("No controller defined"))?;
-
-    let status = Command::new("cargo")
-        .current_dir(&dir)
-        .args([
-            "build",
-            "-p",
-            controller,
-            "--target",
-            "wasm32-unknown-unknown",
-            "--release",
-        ])
-        .stdout(Stdio::null())
-        .stderr(Stdio::inherit())
-        .status()?;
-
-    anyhow::ensure!(status.success(), "failed to build controller");
-
-    let wasm = circuit
-        .controller
-        .as_ref()
-        .map(|c| c.replace("-", "_"))
-        .ok_or_else(|| anyhow::anyhow!("Undefined controller"))?;
-
-    let wasm = target
-        .join("wasm32-unknown-unknown")
-        .join("release")
-        .join(format!("{wasm}.wasm"));
-
-    let controller = fs::read(&wasm)?;
-
-    info!("Controller bytecode loaded from `{}`...", wasm.display());
-
-    fs::write(&out_con, controller)?;
-
-    info!("Controller bytecode stored at `{}`...", out_con.display());
-
-    if only_controller {
-        info!("Skipping circuit build...");
-    } else {
-        info!("Rebuilding circuit...");
-
-        let prove = circuit
-            .circuit
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("No circuit defined"))?;
-
-        let status = Command::new("cargo")
-            .current_dir(&dir)
-            .args(["prove", "build", "-p", prove])
-            .stdout(Stdio::null())
-            .stderr(Stdio::inherit())
-            .status()?;
-
-        anyhow::ensure!(status.success(), "failed to build circuit");
-
-        let elf = target
-            .join("elf-compilation")
-            .join("riscv32im-succinct-zkvm-elf")
-            .join("release")
-            .join(prove);
-
-        let bytecode = fs::read(&elf)?;
-
-        info!("Loaded ELF from `{}`...", elf.display());
-
-        fs::write(&out_cir, bytecode)?;
-
-        info!("ELF stored at `{}`...", out_cir.display());
-    }
-
-    Ok(json!({
-        "circuit": out_cir,
-        "controller": out_con,
-    }))
-}
-
-pub fn build_all(manifest: &str, only_controller: bool) -> anyhow::Result<Value> {
-    let m = fs::read_to_string(manifest)?;
-    let m: Manifest = toml::from_str(&m)?;
-    let resources = m
-        .circuit
-        .keys()
-        .map(|name| build(manifest, name, only_controller))
-        .collect::<anyhow::Result<Vec<_>>>()?;
-
-    Ok(json!(resources))
-}
-
 pub async fn deploy(
     client: &CoprocessorClient,
     manifest: &str,
     name: &str,
 ) -> anyhow::Result<Value> {
-    let (dir, manifest) = load_manifest(manifest)?;
+    let (dir, manifest) = Manifest::load_from_path(manifest)?;
 
     fn _load(manifest: &Manifest, dir: &Path, name: &str) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
         let artifacts = dir
@@ -179,7 +55,7 @@ pub async fn download(
     id: &str,
 ) -> anyhow::Result<Value> {
     let (dir, manifest) = match path {
-        Some(m) => load_manifest(m)?,
+        Some(m) => Manifest::load_from_path(m)?,
         None => {
             info!("No manifest provided; searching on current structure...");
 
@@ -205,7 +81,7 @@ pub async fn download(
                 fs::write(&manifest, contents)?;
             }
 
-            load_manifest(&manifest.display().to_string())?
+            Manifest::load_from_path(&manifest)?
         }
     };
 
@@ -307,20 +183,4 @@ pub async fn witnesses(
     let witnesses = client.get_witnesses(circuit, &args).await?;
 
     Ok(serde_json::to_value(witnesses)?)
-}
-
-/// Load the manifest from path, returning its parsed structure and parent dir.
-fn load_manifest(manifest: &str) -> anyhow::Result<(PathBuf, Manifest)> {
-    let path = PathBuf::from(manifest).canonicalize()?;
-    let dir = path
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("failed to navigate to manifest directory"))?
-        .to_path_buf();
-
-    let manifest = fs::read_to_string(&path)?;
-    let manifest = toml::from_str(&manifest)?;
-
-    info!("Loaded manifest file from `{}`...", path.display());
-
-    Ok((dir, manifest))
 }
