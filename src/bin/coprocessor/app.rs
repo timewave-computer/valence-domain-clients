@@ -81,7 +81,7 @@ pub async fn download(
                 fs::write(&manifest, contents)?;
             }
 
-            Manifest::load_from_path(&manifest.display().to_string())?
+            Manifest::load_from_path(&manifest)?
         }
     };
 

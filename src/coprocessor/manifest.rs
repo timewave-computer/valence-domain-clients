@@ -104,8 +104,8 @@ impl TryFrom<&Path> for Manifest {
 
 impl Manifest {
     /// Load the manifest from path, returning its parent dir and parsed structure.
-    pub fn load_from_path(manifest: &str) -> anyhow::Result<(PathBuf, Self)> {
-        let path = PathBuf::from(manifest).canonicalize()?;
+    pub fn load_from_path<P: AsRef<Path>>(manifest: P) -> anyhow::Result<(PathBuf, Self)> {
+        let path = manifest.as_ref().canonicalize()?;
 
         let parent_dir = path
             .parent()
