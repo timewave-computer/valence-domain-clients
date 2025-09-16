@@ -12,6 +12,7 @@ default = ["coprocessor", "coprocessor-bin", "cosmos", "evm", "indexer"]
 coprocessor = [
     "base64",
     "const-hex",
+    "log",
     "msgpacker",
     "toml",
     "uuid",
