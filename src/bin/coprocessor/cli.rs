@@ -49,18 +49,15 @@ pub enum Commands {
         /// Arguments
         #[arg(short, long, value_name = "ARGS")]
         args: String,
+
+        /// Debug witnesses computation.
+        #[arg(long, value_name = "DEBUG")]
+        debug: bool,
     },
 
-    /// Prints the computed witnesses for the provided arguments.
-    Witnesses {
-        /// Circuit ID
-        #[arg(short, long, value_name = "CIRCUIT")]
-        circuit: String,
-
-        /// Arguments
-        #[arg(short, long, value_name = "ARGS")]
-        args: String,
-    },
+    /// Prover scheduler for the client.
+    #[command(subcommand)]
+    Provers(CmdProvers),
 }
 
 #[derive(Subcommand)]
@@ -84,5 +81,35 @@ pub enum CmdGet {
         /// Circuit ID
         #[arg(short, long, value_name = "CIRCUIT")]
         circuit: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum CmdProvers {
+    /// Get the available provers for the client.
+    Get,
+
+    /// Adds a new scheduled prover for the client.
+    Add {
+        /// Address of the prover.
+        #[arg(
+            short,
+            long,
+            value_name = "CIRCUIT",
+            default_value = "wss://prover.coprocessor.valence.zone"
+        )]
+        address: String,
+    },
+
+    /// Removes a scheduled prover for the client.
+    Remove {
+        /// Address of the prover.
+        #[arg(
+            short,
+            long,
+            value_name = "CIRCUIT",
+            default_value = "wss://prover.coprocessor.valence.zone"
+        )]
+        address: String,
     },
 }

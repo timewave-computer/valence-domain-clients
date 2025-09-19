@@ -184,3 +184,27 @@ pub async fn witnesses(
 
     Ok(serde_json::to_value(witnesses)?)
 }
+
+pub async fn provers(client: &CoprocessorClient) -> anyhow::Result<Value> {
+    info!("Fetching provers...");
+
+    let provers = client.provers().await?;
+
+    Ok(serde_json::to_value(provers)?)
+}
+
+pub async fn provers_add(client: &CoprocessorClient, address: &str) -> anyhow::Result<Value> {
+    info!("Adding prover `{address}`...");
+
+    let data = client.provers_add(address).await?;
+
+    Ok(serde_json::to_value(data)?)
+}
+
+pub async fn provers_remove(client: &CoprocessorClient, address: &str) -> anyhow::Result<Value> {
+    info!("Removing prover `{address}`...");
+
+    let data = client.provers_remove(address).await?;
+
+    Ok(serde_json::to_value(data)?)
+}

@@ -45,7 +45,6 @@ impl<'a> RequestBuilder<'a> {
     async fn _send<T: DeserializeOwned>(
         self,
         mut client: reqwest::RequestBuilder,
-        get: bool,
     ) -> anyhow::Result<T> {
         let Self {
             circuit,
@@ -55,15 +54,18 @@ impl<'a> RequestBuilder<'a> {
         } = self;
 
         // signer settings might change at runtime
-        if !get {
-            if let Ok(signer) = valence_crypto_utils::Signer::try_from_env() {
-                let message = args.unwrap_or(&Value::Null);
-                let message = serde_json::to_vec(&message)?;
-                let signature = signer.sign_json(&message)?;
-                let signature = const_hex::encode(signature);
+        if let Ok(signer) = valence_crypto_utils::Signer::try_from_env() {
+            let uuid = Uuid::new_v4().as_u128().to_le_bytes();
+            let uuid = const_hex::encode(uuid);
 
-                client = client.header("valence-coprocessor-signature", signature);
-            }
+            let message = args.unwrap_or(&Value::Null);
+            let message = serde_json::to_vec(message)?;
+
+            let signature = signer.sign_json_with_id(uuid.as_bytes(), &message)?;
+            let signature = const_hex::encode(signature);
+
+            client = client.header("valence-coprocessor-uuid", uuid);
+            client = client.header("valence-coprocessor-signature", signature);
         }
 
         if let Some(circuit) = circuit {
@@ -81,16 +83,22 @@ impl<'a> RequestBuilder<'a> {
         Ok(client.send().await?.json().await?)
     }
 
+    pub async fn delete<T: DeserializeOwned>(self) -> anyhow::Result<T> {
+        let client = reqwest::Client::new().delete(self.uri);
+
+        self._send::<T>(client).await
+    }
+
     pub async fn get<T: DeserializeOwned>(self) -> anyhow::Result<T> {
         let client = reqwest::Client::new().get(self.uri);
 
-        self._send::<T>(client, true).await
+        self._send::<T>(client).await
     }
 
     pub async fn post<T: DeserializeOwned>(self) -> anyhow::Result<T> {
         let client = reqwest::Client::new().post(self.uri);
 
-        self._send::<T>(client, false).await
+        self._send::<T>(client).await
     }
 }
 
@@ -452,6 +460,33 @@ impl CoprocessorBaseClient for CoprocessorClient {
         let uri = format!("registry/domain/{domain}");
         let uri = self.uri(uri);
         let data = RequestBuilder::new(&uri).with_args(args).post().await?;
+
+        Ok(data)
+    }
+
+    async fn provers(&self) -> anyhow::Result<Value> {
+        let uri = self.uri("prover");
+        let data = RequestBuilder::new(&uri).get().await?;
+
+        Ok(data)
+    }
+
+    async fn provers_add(&self, prover: &str) -> anyhow::Result<Value> {
+        let uri = self.uri("prover");
+        let data = RequestBuilder::new(&uri)
+            .with_args(&json!({"address": prover}))
+            .post()
+            .await?;
+
+        Ok(data)
+    }
+
+    async fn provers_remove(&self, prover: &str) -> anyhow::Result<Value> {
+        let uri = self.uri("prover");
+        let data = RequestBuilder::new(&uri)
+            .with_args(&json!({"address": prover}))
+            .delete()
+            .await?;
 
         Ok(data)
     }

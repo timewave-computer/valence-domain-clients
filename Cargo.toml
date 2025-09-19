@@ -10,41 +10,41 @@ description = "Client implementations for interacting with Valence Protocol doma
 [features]
 default = ["coprocessor", "coprocessor-bin", "cosmos", "evm", "indexer"]
 coprocessor = [
-    "base64",
-    "const-hex",
-    "log",
-    "msgpacker",
-    "toml",
-    "uuid",
-    "valence-crypto-utils",
+  "base64",
+  "const-hex",
+  "log",
+  "msgpacker",
+  "toml",
+  "uuid",
+  "valence-crypto-utils",
 ]
 coprocessor-bin = ["clap", "colored", "coprocessor"]
 cosmos = [
-    "alloy",
-    "bip32",
-    "cosmos-sdk-proto",
-    "cosmrs",
-    "ed25519-zebra",
-    "hex",
-    "ibc",
-    "log",
-    "neutron-std",
-    "prost",
-    "tonic",
+  "alloy",
+  "bip32",
+  "cosmos-sdk-proto",
+  "cosmrs",
+  "ed25519-zebra",
+  "hex",
+  "ibc",
+  "log",
+  "neutron-std",
+  "prost",
+  "tonic",
 ]
 evm = ["alloy", "alloy_signer_local", "log", "tonic"]
 indexer = ["alloy", "tonic"]
 solana = [
-    "bip32",
-    "bs58",
-    "ed25519-dalek",
-    "log",
-    "solana-client",
-    "solana-account-decoder",
-    "solana-rpc-client",
-    "solana-rpc-client-api",
-    "solana-sdk",
-    "solana-transaction-status",
+  "bip32",
+  "bs58",
+  "ed25519-dalek",
+  "log",
+  "solana-client",
+  "solana-account-decoder",
+  "solana-rpc-client",
+  "solana-rpc-client-api",
+  "solana-sdk",
+  "solana-transaction-status",
 ]
 test-utils = []
 
@@ -54,7 +54,7 @@ anyhow = "1.0.83"
 async-trait = "0.1.77"
 tokio = { version = "1.43.0", features = ["full"] }
 reqwest = { version = "0.12.15", features = ["json"] }
-serde = { version = "1.0.207", features = ["derive"] }
+serde = { version = "=1.0.219", features = ["derive"] }
 serde_json = "1.0.125"
 
 # fixes
@@ -64,19 +64,19 @@ ed25519-zebra = { version = "=4.0.3", default-features = false, optional = true 
 # cosmos-specific imports
 bip32 = { version = "0.5", features = ["bip39"], optional = true }
 cosmrs = { version = "0.21.1", features = [
-    "cosmwasm",
-    "rpc",
-    "grpc",
+  "cosmwasm",
+  "rpc",
+  "grpc",
 ], optional = true }
 cosmos-sdk-proto = { version = "0.26.1", features = [
-    "grpc-transport",
-    "grpc",
+  "grpc-transport",
+  "grpc",
 ], optional = true }
 log = { version = "0.4.22", optional = true }
 tonic = { version = "0.12.3", features = [
-    "transport",
-    "tls",
-    "tls-native-roots",
+  "transport",
+  "tls",
+  "tls-native-roots",
 ], optional = true }
 neutron-std = { version = "5.1.2", optional = true }
 ibc = { version = "0.57.0", optional = true }
@@ -86,8 +86,8 @@ hex = { version = "0.4.3", optional = true }
 # coprocessor-specific imports
 base64 = { version = "0.22.1", optional = true }
 const-hex = { version = "1.14.1", default-features = false, features = [
-    "alloc",
-    "core-error",
+  "alloc",
+  "core-error",
 ], optional = true }
 msgpacker = { version = "0.4.8", optional = true }
 toml = { version = "0.9.5", optional = true }
@@ -100,21 +100,21 @@ colored = { version = "3.0.0", optional = true }
 
 # evm-specific imports
 alloy_signer_local = { package = "alloy-signer-local", version = "0.9.2", features = [
-    "mnemonic",
-    "keystore",
+  "mnemonic",
+  "keystore",
 ], optional = true }
 alloy = { version = "0.9.2", features = [
-    "eips",
-    "full",
-    "hyper",
-    "json-rpc",
-    "node-bindings",
-    "rpc-client",
-    "rpc-types-debug",
-    "rpc-types-trace",
-    "signer-keystore",
-    "signer-mnemonic",
-    "signers",
+  "eips",
+  "full",
+  "hyper",
+  "json-rpc",
+  "node-bindings",
+  "rpc-client",
+  "rpc-types-debug",
+  "rpc-types-trace",
+  "signer-keystore",
+  "signer-mnemonic",
+  "signers",
 ], optional = true }
 
 # solana-specific imports

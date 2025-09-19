@@ -136,4 +136,13 @@ pub trait CoprocessorBaseClient {
     ///
     /// Returns a JSON representation of `AddedDomainBlock`
     async fn add_domain_block(&self, domain: &str, args: &Value) -> anyhow::Result<Value>;
+
+    /// Returns the available provers.
+    async fn provers(&self) -> anyhow::Result<Value>;
+
+    /// Adds the provided prover to the owned schedule.
+    async fn provers_add(&self, prover: &str) -> anyhow::Result<Value>;
+
+    /// Removes the provided prover from the owned schedule.
+    async fn provers_remove(&self, prover: &str) -> anyhow::Result<Value>;
 }
