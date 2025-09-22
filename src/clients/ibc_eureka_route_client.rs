@@ -9,6 +9,7 @@ pub struct IBCEurekaRouteClient {
     src_asset_denom: String,
     dest_chain_id: String,
     dest_chain_denom: String,
+    go_fast: bool,
 }
 
 impl IBCEurekaRouteClient {
@@ -18,6 +19,7 @@ impl IBCEurekaRouteClient {
         src_asset_denom: &str,
         dest_chain_id: &str,
         dest_chain_denom: &str,
+        go_fast: bool,
     ) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -26,6 +28,7 @@ impl IBCEurekaRouteClient {
             src_asset_denom: src_asset_denom.to_string(),
             dest_chain_id: dest_chain_id.to_string(),
             dest_chain_denom: dest_chain_denom.to_string(),
+            go_fast,
         }
     }
 }
@@ -44,7 +47,7 @@ impl IBCEurekaRouteClient {
             "amount_in": amount.into(),
             "allow_unsafe": true,
             "allow_multi_tx": true,
-            "go_fast": true,
+            "go_fast": self.go_fast,
             "smart_relay": true,
             "smart_swap_options": {
                 "split_routes": true,
@@ -80,6 +83,7 @@ async fn test_route_query() {
         "ibc/D742E8566B0B8CC8F569D950051C09CF57988A88F0E45574BFB3079D41DE6462",
         "1",
         "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        true,
     );
 
     let resp = client.query_skip_eureka_route("10000000").await.unwrap();
