@@ -3,7 +3,7 @@ name = "valence-domain-clients"
 authors = ["Timewave Labs"]
 edition = "2021"
 license = "Apache-2.0"
-version = "2.0.0"
+version = "3.0.0"
 repository = "https://github.com/timewave-computer/valence-domain-clients"
 description = "Client implementations for interacting with Valence Protocol domains"
 
