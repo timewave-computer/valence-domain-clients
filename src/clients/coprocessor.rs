@@ -490,6 +490,15 @@ impl CoprocessorBaseClient for CoprocessorClient {
 
         Ok(data)
     }
+
+    async fn migrate(&self, circuit: &str, source: &str) -> anyhow::Result<Value> {
+        let client = CoprocessorClient::new(source.into());
+        let controller = client.get_runtime(circuit).await?;
+        let circuit = client.get_circuit(circuit).await?;
+        let id = self.deploy_controller(&controller, &circuit, None).await?;
+
+        Ok(id.into())
+    }
 }
 
 #[tokio::test]

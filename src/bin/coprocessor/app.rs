@@ -208,3 +208,13 @@ pub async fn provers_remove(client: &CoprocessorClient, address: &str) -> anyhow
 
     Ok(serde_json::to_value(data)?)
 }
+
+pub async fn migrate(
+    client: &CoprocessorClient,
+    circuit: &str,
+    source: &str,
+) -> anyhow::Result<Value> {
+    info!("Migrating circuit `{circuit}` from `{source}`...");
+
+    client.migrate(circuit, source).await
+}

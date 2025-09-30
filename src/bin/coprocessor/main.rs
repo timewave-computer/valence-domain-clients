@@ -41,6 +41,8 @@ async fn main() -> anyhow::Result<()> {
 
         C::Get(CmdGet::Vk { circuit }) => app::get_vk(&client, &circuit).await?,
 
+        C::Migrate { source, circuit } => app::migrate(&client, &circuit, &source).await?,
+
         C::Prove {
             circuit,
             args,
