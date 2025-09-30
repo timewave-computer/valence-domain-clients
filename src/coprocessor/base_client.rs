@@ -72,7 +72,7 @@ pub trait CoprocessorBaseClient {
     /// Returns the allocated Id.
     async fn deploy_controller(
         &self,
-        circuit: &[u8],
+        controller: &[u8],
         circuit: &[u8],
         nonce: Option<u64>,
     ) -> anyhow::Result<String>;
@@ -83,7 +83,7 @@ pub trait CoprocessorBaseClient {
     async fn deploy_domain(
         &self,
         domain: &str,
-        circuit: &[u8],
+        controller: &[u8],
         circuit: &[u8],
     ) -> anyhow::Result<String>;
 
@@ -145,4 +145,7 @@ pub trait CoprocessorBaseClient {
 
     /// Removes the provided prover from the owned schedule.
     async fn provers_remove(&self, prover: &str) -> anyhow::Result<Value>;
+
+    /// Migrates an App from the source co-processor instance.
+    async fn migrate(&self, circuit: &str, source: &str) -> anyhow::Result<Value>;
 }

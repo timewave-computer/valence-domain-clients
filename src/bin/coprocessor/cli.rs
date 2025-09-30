@@ -40,6 +40,17 @@ pub enum Commands {
     #[command(subcommand)]
     Get(CmdGet),
 
+    /// Migrates an app from the provided source instance.
+    Migrate {
+        /// Source co-processor socket
+        #[arg(short, long, value_name = "SOURCE", default_value = CoprocessorClient::DEFAULT_COPROCESSOR)]
+        source: String,
+
+        /// Circuit ID
+        #[arg(short, long, value_name = "CIRCUIT")]
+        circuit: String,
+    },
+
     /// Proves the circuit with the provided arguments.
     Prove {
         /// Circuit ID
