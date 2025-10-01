@@ -10142,7 +10142,7 @@ dependencies = [
 
 [[package]]
 name = "valence-domain-clients"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "alloy",
  "alloy-signer-local",
